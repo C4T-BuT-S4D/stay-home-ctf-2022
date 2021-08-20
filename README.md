@@ -1,6 +1,6 @@
 # ad-boilerplate
 
-[![check-services](https://github.com/C4T-BuT-S4D/ad-boilerplate/actions/workflows/check-services.yml/badge.svg?branch=master&event=push)](https://github.com/C4T-BuT-S4D/ad-boilerplate/actions/workflows/check-services.yml)
+[![check-services](https://github.com/C4T-BuT-S4D/stay-home-ctf-2021/actions/workflows/check-services.yml/badge.svg?branch=master&event=push)](https://github.com/C4T-BuT-S4D/stay-home-ctf-2021/actions/workflows/check-services.yml)
 
 Development workflow:
 

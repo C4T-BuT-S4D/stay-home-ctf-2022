@@ -1,0 +1,22 @@
+version: "2.4"
+services:
+  example:
+    restart: on-failure
+    build: .
+    pids_limit: 256
+    mem_limit: 64M
+    cpus: 0.5
+    volumes:
+      - ./notes:/app/notes
+    ports:
+      - 1337:5000
+
+  cleaner:
+    image: c4tbuts4d/dedcleaner:latest
+    restart: on-failure
+    volumes:
+      - "./notes:/notes"
+    environment:
+      - DELETE_AFTER=30m
+      - SLEEP=30m
+      - DIRS=/notes

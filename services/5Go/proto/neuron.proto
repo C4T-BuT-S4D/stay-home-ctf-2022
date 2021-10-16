@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package neuron.neuron;
+option go_package = "neuron/interop";
+
+import "google/protobuf/empty.proto";
+import "neurotransmitter.proto";
+
+service NeuronAPI {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc Session(stream neurotransmitter.SerializedStuff) returns (stream neurotransmitter.SerializedStuff);
+}

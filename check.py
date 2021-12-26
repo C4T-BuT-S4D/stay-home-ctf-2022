@@ -342,7 +342,7 @@ class StructureValidator(BaseValidator):
                         f'required option {opt} not in {path} for container {container}',
                     )
 
-                self._error('restart' in container_conf and container_conf['restart'] == 'on-failure', f'restart option in {path} for container {container} must be equal to "on-failure"')
+                self._error('restart' in container_conf and container_conf['restart'] == 'unless-stopped', f'restart option in {path} for container {container} must be equal to "unless-stopped"')
 
                 for opt in container_conf:
                     self._error(

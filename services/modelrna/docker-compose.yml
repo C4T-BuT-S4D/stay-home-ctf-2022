@@ -1,0 +1,38 @@
+version: '2.4'
+services:
+  backend:
+    build: .
+    cpus: 1
+    pids_limit: 256
+    mem_limit: 256m
+    volumes:
+      - "./data/uploads:/uploads"
+    depends_on:
+      - celery
+  celery:
+    build: .
+    entrypoint: "celery -A main.celery_app worker -l info"
+    cpus: 1
+    pids_limit: 1024
+    mem_limit: 512m
+    volumes:
+      - "./data/uploads:/uploads"
+    depends_on:
+      - redis
+  nginx:
+    image: nginx:1.18.0-alpine
+    restart: on-failure
+    volumes:
+      - ./front/app.conf:/etc/nginx/conf.d/default.conf
+      - ./front/proxy_params:/etc/nginx/proxy_params
+      - ./front/build:/front/build
+      - ./docs:/front/docs
+    depends_on:
+      - backend
+    ports:
+      - "8000:80"
+  redis:
+    image: redis:alpine
+    mem_limit: 512m
+    volumes:
+      - "./data/redis:/data"

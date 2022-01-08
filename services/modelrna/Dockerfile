@@ -10,7 +10,7 @@ COPY src .
 
 COPY config.env config.env
 
-RUN sed -i  "s/JWT_KEY=.*/JWT_KEY=$(xxd -u -l 14 -p /dev/urandom)/g" config.env
+RUN sed -i  "s/JWT_KEY=.*/JWT_KEY=$(xxd -u -l 10 -p /dev/urandom)/g" config.env
 
 CMD python3 main.py
 

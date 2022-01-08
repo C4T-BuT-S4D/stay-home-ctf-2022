@@ -18,8 +18,8 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Install cmake
-      run: sudo apt-get install -y cmake
+    - name: Install cmake and protobuf
+      run: sudo apt-get install -y cmake protobuf-compiler
 
     - name: install requirements
       run: pip install -r requirements.txt

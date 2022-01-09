@@ -10,21 +10,21 @@ services:
     depends_on:
       - celery
       - redis
-    restart: on-failure
+    restart: unless-stopped
   celery:
     build: .
     entrypoint: "celery -A main.celery_app worker -l info"
     cpus: 2
     pids_limit: 1024
     mem_limit: 512m
-    restart: on-failure
+    restart: unless-stopped
     volumes:
       - "./data/uploads:/uploads"
     depends_on:
       - redis
   nginx:
     image: nginx:1.18.0-alpine
-    restart: on-failure
+    restart: unless-stopped
     volumes:
       - ./front/app.conf:/etc/nginx/conf.d/default.conf
       - ./front/proxy_params:/etc/nginx/proxy_params
@@ -37,13 +37,13 @@ services:
       - "8000:80"
   redis:
     image: redis:alpine
-    restart: on-failure
+    restart: unless-stopped
     mem_limit: 512m
     volumes:
       - "./data/redis:/data"
   cleaner:
     image: c4tbuts4d/dedcleaner:latest
-    restart: on-failure
+    restart: unless-stopped
     volumes:
       - "./data/uploads:/uploads"
     environment:

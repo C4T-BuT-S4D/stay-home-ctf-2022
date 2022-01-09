@@ -39,7 +39,7 @@ CONTAINER_ALLOWED_OPTIONS = CONTAINER_REQUIRED_OPTIONS + [
     'ports', 'volumes',
     'environment', 'env_file',
     'depends_on',
-    'sysctls', 'privileged', 'security_opt',
+    'sysctls', 'privileged', 'security_opt', 'entrypoint'
 ]
 SERVICE_REQUIRED_OPTIONS = ['pids_limit', 'mem_limit', 'cpus']
 SERVICE_ALLOWED_OPTIONS = CONTAINER_ALLOWED_OPTIONS
@@ -51,6 +51,8 @@ PROXIES = ['nginx', 'envoy']
 CLEANERS = ['dedcleaner']
 
 VALIDATE_DIRS = ['checkers', 'services', 'internal', 'sploits']
+# For local testing
+IGNORE_DIR_PATTERNS = ["node_modules"]
 
 ALLOWED_CHECKER_PATTERNS = [
     "import requests",
@@ -61,8 +63,10 @@ ALLOWED_CHECKER_PATTERNS = [
     "Got requests connection error",
 ]
 FORBIDDEN_CHECKER_PATTERNS = [
-    "requests"
+    "requests.",
+    "from requests"
 ]
+
 
 class ColorType(Enum):
     INFO = '\033[92m'
@@ -282,6 +286,9 @@ class StructureValidator(BaseValidator):
     def validate_dir(self, d: Path):
         if not d.exists():
             return
+        for ignore_pattern in IGNORE_DIR_PATTERNS:
+            if ignore_pattern in d.absolute().name:
+                return
         for f in d.iterdir():
             if f.is_file():
                 self.validate_file(f)
@@ -333,7 +340,8 @@ class StructureValidator(BaseValidator):
                 return
 
             for container, container_conf in dc['services'].items():
-                if self._error(isinstance(container_conf, dict), f'config in {path} for container {container} is not dict'):
+                if self._error(isinstance(container_conf, dict),
+                               f'config in {path} for container {container} is not dict'):
                     continue
 
                 for opt in CONTAINER_REQUIRED_OPTIONS:
@@ -342,7 +350,8 @@ class StructureValidator(BaseValidator):
                         f'required option {opt} not in {path} for container {container}',
                     )
 
-                self._error('restart' in container_conf and container_conf['restart'] == 'on-failure', f'restart option in {path} for container {container} must be equal to "on-failure"')
+                self._error('restart' in container_conf and container_conf['restart'] == 'on-failure',
+                            f'restart option in {path} for container {container} must be equal to "on-failure"')
 
                 for opt in container_conf:
                     self._error(

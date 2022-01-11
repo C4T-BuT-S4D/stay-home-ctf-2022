@@ -80,7 +80,7 @@ class Storage(object):
                 await tx.hset(self.USERS_SET, uid, user_data)
                 # Finish the TX.
                 await tx.incr(lock_string)
-                await tx.lpush(self.LATEST_USERS_LIST, public_info)
+                await tx.rpush(self.LATEST_USERS_LIST, public_info)
                 await tx.execute()
 
         except aioredis.WatchError as e:
@@ -91,7 +91,7 @@ class Storage(object):
             raise e
         return uid
 
-    async def latest_users(self, limit=200):
+    async def latest_users(self, limit=500):
         try:
             users = await self.redis_cli.lrange(self.LATEST_USERS_LIST, -limit - 1, -1)
             out = []
@@ -150,6 +150,7 @@ class Storage(object):
     async def revoke_challenge(self, chal_id):
         try:
             await self.redis_cli.delete(self.CAPTCHA_CHALLENGES_PREFIX + ":" + chal_id)
+            logging.error("DELETED captcha")
         except Exception as e:
             logging.error("failed to delete captcha key: {}".format(str(e)))
             raise e

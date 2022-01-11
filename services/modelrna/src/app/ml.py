@@ -29,5 +29,4 @@ def predict(model_path: str, scalar):
     prediction_prob = None
     if len(outputs) > 1 and len(result[1]) > 0 and prediction in result[1][0]:
         prediction_prob = result[1][0][prediction]
-    print("inner predict elapsed: ", time.time() - start)
     return prediction, prediction_prob

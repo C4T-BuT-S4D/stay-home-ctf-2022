@@ -1,4 +1,6 @@
 import hashlib
+import json
+import os
 import random
 
 import requests
@@ -19,6 +21,8 @@ class ModelrnaLib:
         self.c = checker
         self.port = port
         self.host = host or self.c.host
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mine_results.json'), 'r') as f:
+            self.mine_answers = json.loads(f.read())
 
     def check_json_dict_response(self, resp, url, keys):
         err_msg = f"Invalid JSON response on {url}"
@@ -79,7 +83,8 @@ class ModelrnaLib:
 
     def end_to_end_prediction(self, session: requests.Session, vaccine_id, data):
         captcha_info = self.get_captcha(session)
-        answer = self.mine(captcha_info['captcha_challenge'], 5)
+        # answer = self.mine(captcha_info['captcha_challenge'], 5)
+        answer = self.captcha_answer(captcha_info['captcha_challenge'])
         token = self.send_captcha(session, captcha_info['captcha_key'], str(answer))['captcha_token']
         return self.make_prediction(session, vaccine_id, data, token)
 
@@ -131,3 +136,9 @@ class ModelrnaLib:
             hsh = hashlib.sha256(s).hexdigest()
             if hsh.startswith('0' * size):
                 return x
+
+    def captcha_answer(self, message):
+        answer = self.mine_answers.get(message)
+        if not answer:
+            return self.mine(message, 5)
+        return answer

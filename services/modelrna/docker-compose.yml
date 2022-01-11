@@ -4,7 +4,7 @@ services:
     build: .
     cpus: 1
     pids_limit: 256
-    mem_limit: 512m
+    mem_limit: 1024m
     volumes:
       - "./data/uploads:/uploads"
     depends_on:

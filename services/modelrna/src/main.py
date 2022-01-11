@@ -1,6 +1,5 @@
 import functools
 import sys
-import traceback
 import uuid
 import pathlib
 import logging
@@ -53,7 +52,6 @@ async def get_current_user(request: fastapi.Request) -> str:
         session_h = get_session_handler()
         user_data = session_h.decode_token(api_token.encode())
     except Exception as e:
-        print(traceback.print_exc())
         raise fastapi.HTTPException(
             status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
             detail="could not validate credentials",
@@ -255,9 +253,11 @@ def startup():
 
 if __name__ == '__main__':
     root = logging.getLogger()
-    handler = logging.StreamHandler(sys.stdout)
+    root.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler(sys.stderr)
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     root.addHandler(handler)
-    uvicorn.run("main:app", port=8000, reload=False, access_log=True, host='0.0.0.0', workers=4)
+    uvicorn.run("main:app", port=8000, reload=False, access_log=False, host='0.0.0.0', workers=10)

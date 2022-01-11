@@ -1,13 +1,13 @@
 import uuid
 import random
 import hashlib
-import secrets
+import string
 
 from app.storage import Storage
 
 
 class CaptchaHelper:
-    MAX_VALUE = 10000
+    ALPHA = string.ascii_uppercase + string.digits
     HARDNESS = 5
 
     def __init__(self, storage: Storage):
@@ -15,7 +15,7 @@ class CaptchaHelper:
 
     async def create(self):
         key = str(uuid.uuid4())
-        value = secrets.token_urlsafe(5)
+        value = ''.join(random.choices(self.ALPHA, k=3))
         await self.storage.store_challenge(key, value)
         return key, value
 

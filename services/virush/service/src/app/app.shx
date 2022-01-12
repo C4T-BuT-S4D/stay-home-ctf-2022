@@ -1,0 +1,77 @@
+#!/usr/bin/shx
+
+@module app || {
+    @require logging
+    @require app/config
+    @require channel
+    @require storage
+    @require loop
+
+    @class app
+
+    function app::__init__ {
+        log::enter_function
+
+        log::info "starting app"
+
+        loop::new
+        loop::instance | read __loop
+
+        channel::new
+        channel::instance | read __channel
+
+        $__channel::wrap app::handler
+
+        log::exit_function
+    }
+
+    function app::__destroy__ {
+        log::enter_function
+
+        log::info "destroying app"
+
+        $__channel::unwrap
+        $__channel::delete
+
+        $__loop::delete
+
+        log::exit_function
+    }
+
+    function app::handler {
+        local action
+        local name
+
+        read -r -t $AppInputTimeout action name || return 0
+
+        case "$action" in
+            "GET")
+                log::info "executing GET command"
+                storage::get "$name"
+                ;;
+            "PUT")
+                log::info "executing PUT command"
+                storage::put "$name"
+                ;;
+            "EXIT")
+                log::info "executing EXIT command"
+                $__loop::stop
+                ;;
+            *)
+                std::print "INVALID"
+                ;;
+        esac
+    }
+
+    function app::run {
+        log::enter_function
+
+        $__loop::add_event $__channel::wrapped
+        $__loop::add_event $__channel::forward_input
+        $__loop::add_event $__channel::forward_output
+
+        $__loop::run
+
+        log::exit_function
+    }
+}

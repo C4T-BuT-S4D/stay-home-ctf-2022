@@ -1,0 +1,30 @@
+#!/usr/bin/shx
+
+@module server || {
+    @require logging
+    @require app
+
+    function server::exception {
+        log::error "non-zero return code"
+        std::print "ERROR"
+        std::exit 1
+    }
+
+    function server::main {
+        trap "server::exception" ERR
+
+        log::set_level "DEBUG"
+
+        log::info "starting server"
+
+        local app
+        app::new
+        app::instance | read app
+
+        $app::run
+
+        $app::delete
+    }
+}
+
+@entrypoint server::main

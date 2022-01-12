@@ -1,0 +1,19 @@
+#!/usr/bin/shx
+
+@module crypto/config || {
+    @require logging
+
+    if ! (std::hasvar CRYPTO_KEYS_PATH); then
+        log::error "CRYPTO_KEYS_PATH is not defined"
+        std::raise
+    fi
+
+    declare -rg \
+        CryptoKeysPath=$CRYPTO_KEYS_PATH \
+        CryptoKeyFileMask="XXXXXXXXXXXXXXXX.key" \
+        CryptoCipher="aes-128-cbc" \
+        CryptoDhParam="crypto/dh.param" \
+        CryptoIvSize=32 \
+        CryptoKeySize=32 \
+        CryptoBlockSize=16
+}

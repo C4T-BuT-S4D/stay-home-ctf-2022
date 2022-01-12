@@ -1,0 +1,120 @@
+#!/usr/bin/shx
+
+@module channel || {
+    @require logging
+    @require channel/config
+    @require channel/pipes
+    @require crypto/handshake
+    @require crypto/stream
+    @require crypto/utils
+
+    @class channel
+
+    function channel::__init__ {
+        log::enter_function
+
+        declare -g __shared_key
+        channel::do_handshake
+
+        log::info "starting encrypted channel"
+
+        while (( ${__pipe_in:-0} == ${__pipe_out:-0} )); do
+            __pipe_in=$(( 10 + ($RANDOM % 1000) ))
+            __pipe_out=$(( 10 + ($RANDOM % 1000) ))
+        done
+
+        pipe::open $__pipe_in
+        pipe::open $__pipe_out
+
+        stream::new $__shared_key
+        stream::instance | read __stream
+
+        log::exit_function
+    }
+
+    function channel::__destroy__ {
+        log::enter_function
+
+        log::info "closing encrypted channel"
+
+        $__stream::delete
+
+        pipe::close $__pipe_in
+        pipe::close $__pipe_out
+
+        log::exit_function
+    }
+
+    function channel::do_handshake {
+        log::enter_function
+
+        local server_public_key
+        local client_public_key
+
+        local h
+        handshake::new
+        handshake::instance | read h
+
+        $h::get_public_key \
+            | utils::b64encode \
+            | read server_public_key || true
+
+        std::print $server_public_key
+
+        read -r client_public_key
+
+        std::print $client_public_key \
+            | utils::b64decode \
+            | $h::derive_shared_key \
+            | read __shared_key
+
+        $h::delete
+
+        log::exit_function
+    }
+
+    function channel::forward_input {
+        local data
+
+        read -r -u $STDIN -t $ChannelForwardTimeout data || return 0
+
+        std::print $data \
+            | utils::b64decode \
+            | $__stream::decrypt >&$__pipe_in
+    }
+
+    function channel::forward_output {
+        local data
+
+        read -r -u $__pipe_out -t $ChannelForwardTimeout data || return 0
+
+        std::print $data \
+            | $__stream::encrypt \
+            | utils::b64encode >&$STDOUT
+    }
+
+    function channel::wrap {
+        log::enter_function
+
+        if (( $# < 1 )); then
+            log::error "no enough arguments"
+            std::raise
+        fi
+
+        __wrapped_function=$1
+
+        function channel::wrapped {
+            $__wrapped_function <&$__pipe_in >&$__pipe_out
+        }
+
+        log::exit_function
+    }
+
+    function channel::unwrap {
+        log::enter_function
+
+        unset -f channel::wrapped
+
+        log::exit_function
+    }
+}

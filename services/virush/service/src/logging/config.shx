@@ -1,0 +1,9 @@
+#!/usr/bin/shx
+
+@module logging/config || {
+    declare -Arg LoggingLevels=(
+        ["DEBUG"]=0
+        ["INFO"]=1
+        ["ERROR"]=2
+    )
+}

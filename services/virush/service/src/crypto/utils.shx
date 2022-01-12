@@ -1,0 +1,19 @@
+#!/usr/bin/shx
+
+@module crypto/utils || {
+    function utils::b64encode {
+        base64 -w0 2>$DEVNULL
+    }
+
+    function utils::b64decode {
+        base64 -id 2>$DEVNULL
+    }
+
+    function utils::hexencode {
+        xxd -ps 2>$DEVNULL
+    }
+
+    function utils::hexdecode {
+        xxd -r -ps 2>$DEVNULL
+    }
+}

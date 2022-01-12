@@ -1,0 +1,52 @@
+#!/usr/bin/shx
+
+@module storage || {
+    @require logging
+    @require storage/config
+    @require storage/responses
+
+    function storage::get {
+        log::enter_function
+
+        if (( $# < 1 )); then
+            log::error "no enough arguments"
+            std::raise
+        fi
+
+        local content
+        local name=$1
+        local path=$StoragePath/$name
+
+        if ! (std::hasfile "$path"); then
+            responses::not_found
+            return
+        fi
+
+        read -r content <$path 2>$DEVNULL || true
+        responses::found $content
+
+        log::exit_function
+    }
+
+    function storage::put {
+        log::enter_function
+
+        if (( $# < 1 )); then
+            log::error "no enough arguments"
+            std::raise
+        fi
+
+        local name=$1
+        local path=$StoragePath/$name
+
+        if std::hasfile "$path"; then
+            responses::exists
+            return
+        fi
+
+        dd bs=$StorageDataLength count=1 of=$path status=none 2>$DEVNULL || true
+        responses::success
+
+        log::exit_function
+    }
+}

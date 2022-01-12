@@ -1,4 +1,4 @@
-package gs
+package storage
 
 import (
 	"context"
@@ -40,9 +40,9 @@ type Storage struct {
 	db *genji.DB
 }
 
-func (s *Storage) Add(user, content string) (*Document, error) {
+func (s *Storage) Add(user, content, name string) (*Document, error) {
 	doc := Document{
-		ID:        uuid.New().String(),
+		ID:        fmt.Sprintf("%s-%s", name, uuid.New()),
 		User:      user,
 		Content:   content,
 		CreatedAt: time.Now(),

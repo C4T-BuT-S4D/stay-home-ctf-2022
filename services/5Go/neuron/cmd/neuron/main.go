@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"neuron/internal/storage"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -18,7 +21,12 @@ import (
 func main() {
 	logger := setupLogger()
 
-	srv := service.NewNeuronService()
+	store, err := storage.New(context.Background(), "data")
+	if err != nil {
+		logger.Fatalf("Failed to create storage: %v", err)
+	}
+
+	srv := service.NewNeuronService(store)
 	s := grpc.NewServer()
 
 	reflection.Register(s)

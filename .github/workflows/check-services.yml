@@ -35,7 +35,8 @@ jobs:
     strategy:
       matrix:
         service:
-        - example
+#        - example
+        - 5Go
 
     steps:
     - uses: actions/checkout@v2

@@ -1,8 +1,9 @@
-package gs
+package storage
 
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -39,11 +40,17 @@ func TestStorage(t *testing.T) {
 		content2 = "another content"
 	)
 
-	doc1, err := s.Add(user1, content1)
+	const (
+		name1 = "name1"
+		name2 = "name2"
+		name3 = "name3"
+	)
+
+	doc1, err := s.Add(user1, content1, name1)
 	require.NoError(t, err)
-	require.NotEmpty(t, doc1.ID)
 	require.Equal(t, user1, doc1.User)
 	require.Equal(t, content1, doc1.Content)
+	require.True(t, strings.HasPrefix(doc1.ID, name1))
 
 	dbDoc1, err := s.Get(doc1.ID)
 	require.NoError(t, err)
@@ -54,7 +61,7 @@ func TestStorage(t *testing.T) {
 	require.Len(t, docs, 1)
 	requireDocsEqual(t, doc1, &docs[0])
 
-	doc2, err := s.Add(user1, content2)
+	doc2, err := s.Add(user1, content2, name2)
 	require.NoError(t, err)
 
 	docs, err = s.List(user1)
@@ -63,7 +70,7 @@ func TestStorage(t *testing.T) {
 	requireDocsEqual(t, doc2, &docs[0])
 	requireDocsEqual(t, doc1, &docs[1])
 
-	doc3, err := s.Add(user2, content1)
+	doc3, err := s.Add(user2, content1, name3)
 	require.NoError(t, err)
 
 	docs, err = s.List(user1)

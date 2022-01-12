@@ -55,8 +55,13 @@ func BenchmarkEncrypt(b *testing.B) {
 }
 
 func keyExchange(t testing.TB) []byte {
-	aliceKey := GenerateKey()
-	bobKey := GenerateKey()
+	t.Helper()
+
+	aliceKey, err := GenerateKey()
+	require.NoError(t, err)
+
+	bobKey, err := GenerateKey()
+	require.NoError(t, err)
 
 	var aliceParsed, bobParsed npb.AsymmetricKey
 	if err := proto.Unmarshal(aliceKey, &aliceParsed); err != nil {
@@ -69,9 +74,9 @@ func keyExchange(t testing.TB) []byte {
 	}
 	t.Logf("[BOB] Decoded key: %v\n", bobParsed.PublicKey)
 
-	aliceShared, err := GenerateShared(aliceKey, bobParsed.PublicKey.GetContent())
+	aliceShared, err := GenerateShared(aliceKey, bobParsed.PublicKey.Content)
 	require.NoError(t, err, "[ALICE] generating shared key")
-	bobShared, err := GenerateShared(bobKey, aliceParsed.PublicKey.GetContent())
+	bobShared, err := GenerateShared(bobKey, aliceParsed.PublicKey.Content)
 	require.NoError(t, err, "[BOB] generating shared key")
 	require.Equal(t, aliceShared, bobShared, "Generated shared secrets are not equal")
 	return aliceShared

@@ -1,8 +1,8 @@
 package cryptoff
 
 /*
-#cgo LDFLAGS: ./../../../build/libsynapsis.a -ldl
-#include "../../../synapsis/src/ffi.h"
+#cgo LDFLAGS: ./lib/libsynapsis.a -ldl -lm
+#include "../../lib/ffi.h"
 */
 import "C"
 import (
@@ -84,5 +84,5 @@ func deserializeFromRust(buf C.struct_Buffer) ([]byte, error) {
 	if err := proto.Unmarshal(raw, &dec); err != nil {
 		return nil, fmt.Errorf("deserializing stuff: %w", err)
 	}
-	return dec.GetContent(), nil
+	return dec.Content, nil
 }

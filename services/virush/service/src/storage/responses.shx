@@ -1,0 +1,36 @@
+#!/usr/bin/shx
+
+@module storage/responses || {
+    @require logging
+
+    function responses::response {
+        log::enter_function
+
+        if (( $# < 1 )); then
+            log::error "no enough arguments"
+            std::raise
+        fi
+
+        local type=$1
+
+        printf '%s %s\n' "$type" "${*:2}"
+
+        log::exit_function
+    }
+
+    function responses::found {
+        responses::response "FOUND" "$*"
+    }
+
+    function responses::not_found {
+        responses::response "NOTFOUND"
+    }
+
+    function responses::success {
+        responses::response "SUCCESS"
+    }
+
+    function responses::exists {
+        responses::response "EXISTS"
+    }
+}

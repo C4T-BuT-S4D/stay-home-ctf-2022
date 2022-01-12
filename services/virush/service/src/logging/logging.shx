@@ -1,0 +1,47 @@
+#!/usr/bin/shx
+
+@module logging || {
+    @require logging/config
+
+    declare -g _LoggingCurrentLevel=${LoggingLevels[ERROR]}
+
+    function log::set_level {
+        local level=$1
+
+        _LoggingCurrentLevel=${LoggingLevels[$level]:-$_LoggingCurrentLevel}
+    }
+
+    function log::log {
+        if (( $# < 1 )); then
+            std::raise
+        fi
+
+        local date
+        local level=$1
+
+        if (( ${LoggingLevels[$level]:-999} >= $_LoggingCurrentLevel )); then
+            date --utc +'%F %T,%N' | read date
+            printf '/%6s/ [%s] %5s: %s\n' "$$" "$date" "$level" "${*:2}" >&$STDERR
+        fi
+    }
+
+    function log::error {
+        log::log "ERROR" "$*"
+    }
+
+    function log::info {
+        log::log "INFO" "$*"
+    }
+
+    function log::debug {
+        log::log "DEBUG" "$*"
+    }
+
+    function log::enter_function {
+        log::debug "enter ${FUNCNAME[1]}"
+    }
+
+    function log::exit_function {
+        log::debug "exit ${FUNCNAME[1]}"
+    }
+}

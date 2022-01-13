@@ -8,6 +8,9 @@ services:
       - "5005:5005"
     volumes:
       - data:/data
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 256
 
 volumes:
   data:

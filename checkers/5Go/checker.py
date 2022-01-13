@@ -16,9 +16,10 @@ from client import Daeh5
 
 PORT = 5005
 
+
 class Checker(BaseChecker):
     vulns: int = 1
-    timeout: int = 10
+    timeout: int = 20
     uses_attack_data: bool = True
 
     def __init__(self, *args, **kwargs):
@@ -40,7 +41,9 @@ class Checker(BaseChecker):
         self.d.ping()
         with self.d.session() as session1:
             created = defaultdict(list)
-            users = [rnd_username(32) for _ in range(random.randint(2, 4))]
+            users = [rnd_username(32) for _ in range(random.randint(2, 3))]
+            users += [rnd_string(i) for i in range(5, 10, 2)]
+            users = random.sample(users, 5)
             for _ in range(random.randint(10, 20)):
                 user = random.choice(users)
                 content = rnd_string(random.randint(24, 348), alphabet=string.printable)

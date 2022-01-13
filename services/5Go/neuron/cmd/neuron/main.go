@@ -55,8 +55,9 @@ func main() {
 func setupLogger() *zap.SugaredLogger {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		log.Fatalf("Error initialing logger: %v", err)
+		log.Fatalf("Error initializing logger: %v", err)
 	}
+	logger = logger.WithOptions(zap.AddStacktrace(zap.ErrorLevel))
 	zap.ReplaceGlobals(logger)
 	return logger.Sugar()
 }

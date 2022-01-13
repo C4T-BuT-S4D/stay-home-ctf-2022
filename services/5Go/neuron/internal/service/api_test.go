@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -24,6 +26,19 @@ import (
 const bufSize = 1024 * 1024
 
 var lis *bufconn.Listener
+
+const (
+	user1 = "some user"
+	user2 = "another user"
+	user3 = "empty user"
+
+	content1 = "some content"
+	content2 = "another content"
+
+	name1 = "name1"
+	name2 = "name2"
+	name3 = "name3"
+)
 
 func setup(t *testing.T) func() {
 	setupLogger(t)
@@ -164,22 +179,6 @@ func TestSession(t *testing.T) {
 		require.NoError(t, proto.Unmarshal(decMsg, m), "unmarshalling response")
 	}
 
-	const (
-		user1 = "some user"
-		user2 = "another user"
-	)
-
-	const (
-		content1 = "some content"
-		content2 = "another content"
-	)
-
-	const (
-		name1 = "name1"
-		name2 = "name2"
-		name3 = "name3"
-	)
-
 	send(
 		&npb.Request{
 			InternalRequest: &npb.Request_Add{
@@ -266,6 +265,127 @@ func TestSession(t *testing.T) {
 	recv(&docs2)
 	require.Len(t, docs2.Documents, 1)
 	requireDocsEqual(t, &doc3, docs2.Documents[0])
+
+	send(
+		&npb.Request{
+			InternalRequest: &npb.Request_List{
+				List: &npb.ListDocumentsRequest{
+					User: user3,
+				},
+			},
+		},
+	)
+	var docs3 npb.ListDocumentsResponse
+	recv(&docs3)
+	require.Len(t, docs3.Documents, 0)
+}
+
+func TestShorts(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *npb.Request
+	}{
+		{
+			"list_user",
+			&npb.Request{
+				InternalRequest: &npb.Request_List{
+					List: &npb.ListDocumentsRequest{
+						User: "shrt",
+					},
+				},
+			},
+		},
+		{
+			"add_user",
+			&npb.Request{
+				InternalRequest: &npb.Request_Add{
+					Add: &npb.AddDocumentRequest{
+						User:    "shrt",
+						Content: content1,
+						Name:    name3,
+					},
+				},
+			},
+		},
+		{
+			"add_content",
+			&npb.Request{
+				InternalRequest: &npb.Request_Add{
+					Add: &npb.AddDocumentRequest{
+						User:    user1,
+						Content: "shrt",
+						Name:    name3,
+					},
+				},
+			},
+		},
+		{
+			"add_name",
+			&npb.Request{
+				InternalRequest: &npb.Request_Add{
+					Add: &npb.AddDocumentRequest{
+						User:    user1,
+						Content: content1,
+						Name:    "shrt",
+					},
+				},
+			},
+		},
+		{
+			"get_id",
+			&npb.Request{
+				InternalRequest: &npb.Request_Get{
+					Get: &npb.GetDocumentRequest{
+						Id: "shrt",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setup(t)
+			defer cleanup()
+
+			ctx := context.Background()
+			conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+			require.NoError(t, err, "dialing bufnet")
+			defer func() {
+				require.NoError(t, conn.Close())
+			}()
+
+			client := npb.NewNeuronAPIClient(conn)
+			sessClient, err := client.Session(ctx)
+			require.NoError(t, err, "session init returned error")
+
+			sessSecret, err := cryptoff.GenerateKey()
+			require.NoError(t, err, "generating session private key")
+			var parsedSecret npb.AsymmetricKey
+			require.NoError(t, proto.Unmarshal(sessSecret, &parsedSecret), "unmarshalling secret")
+			require.NoError(t, sessClient.Send(parsedSecret.PublicKey), "sending public key")
+
+			resp, err := sessClient.Recv()
+			require.NoError(t, err, "receiving server pubkey")
+
+			sessShared, err := cryptoff.GenerateShared(sessSecret, resp.Content)
+			require.NoError(t, err, "generating client shared key")
+			t.Logf("Session key: %v", sessShared)
+
+			send := func(m *npb.Request) {
+				content, err := proto.Marshal(m)
+				require.NoError(t, err, "marshalling message")
+				encMsg, err := cryptoff.Encrypt(sessShared, content)
+				require.NoError(t, err, "encrypting message")
+				t.Logf("Encrypted message: %v", encMsg)
+				req := npb.SerializedStuff{Content: encMsg}
+				require.NoError(t, sessClient.Send(&req), "sending request")
+			}
+
+			send(tt.req)
+			_, err = sessClient.Recv()
+			requireGRPCCode(t, err, codes.InvalidArgument)
+		})
+	}
 }
 
 func TestMalformedHandshake(t *testing.T) {
@@ -344,4 +464,12 @@ func requireDocsEqual(t *testing.T, expected, actual *npb.Document) {
 	require.Equal(t, expected.User, actual.User)
 	require.Equal(t, expected.Content, actual.Content)
 	require.Equal(t, expected.CreatedAt.AsTime().UnixMicro(), actual.CreatedAt.AsTime().UnixMicro())
+}
+
+func requireGRPCCode(t *testing.T, err error, code codes.Code) {
+	t.Helper()
+	require.Error(t, err)
+	st, ok := status.FromError(err)
+	require.True(t, ok)
+	require.Equal(t, code, st.Code())
 }

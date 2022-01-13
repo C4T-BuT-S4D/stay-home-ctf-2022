@@ -18,16 +18,45 @@ func TestE2EEncryption(t *testing.T) {
 	t.Logf("Encrypting message: %s", string(message))
 
 	enc, err := Encrypt(shared, message)
-	if err != nil {
-		t.Fatalf("Error encrypting message: %v", err)
-	}
-	t.Logf("Encoded message: %v\n", enc)
+	require.NoError(t, err)
+	t.Logf("Encrypted message: %v\n", enc)
 	dec, err := Decrypt(shared, enc)
-	if err != nil {
-		t.Fatalf("Error decrypting message: %v", err)
-	}
+	require.NoError(t, err)
 	t.Logf("Decrypted message: %v\n", string(dec))
 	require.Equal(t, message, dec, "Invalid decrypted message")
+}
+
+func TestEmptyBuffers(t *testing.T) {
+	t.Run("encrypt_nil", func(t *testing.T) {
+		shared := keyExchange(t)
+		enc, err := Encrypt(shared, nil)
+		require.NoError(t, err)
+		t.Logf("Encrypted message: %v\n", enc)
+		dec, err := Decrypt(shared, enc)
+		require.NoError(t, err)
+		require.Nil(t, dec)
+		t.Logf("Decrypted message: %v\n", string(dec))
+	})
+	t.Run("encrypt_empty", func(t *testing.T) {
+		shared := keyExchange(t)
+		enc, err := Encrypt(shared, []byte(""))
+		require.NoError(t, err)
+		t.Logf("Encrypted message: %v\n", enc)
+		dec, err := Decrypt(shared, enc)
+		require.NoError(t, err)
+		require.Nil(t, dec)
+		t.Logf("Decrypted message: %v\n", string(dec))
+	})
+	t.Run("decrypt_nil", func(t *testing.T) {
+		shared := keyExchange(t)
+		_, err := Decrypt(shared, nil)
+		require.Error(t, err)
+	})
+	t.Run("decrypt_empty", func(t *testing.T) {
+		shared := keyExchange(t)
+		_, err := Decrypt(shared, []byte(""))
+		require.Error(t, err)
+	})
 }
 
 func BenchmarkEncrypt(b *testing.B) {
@@ -35,9 +64,8 @@ func BenchmarkEncrypt(b *testing.B) {
 		shared := keyExchange(b)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			if _, err := Encrypt(shared, message); err != nil {
-				b.Fatalf("Error encrypting: %v", err)
-			}
+			_, err := Encrypt(shared, message)
+			require.NoError(b, err)
 		}
 	}
 	b.Run("short string", func(b *testing.B) {

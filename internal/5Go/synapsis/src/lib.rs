@@ -87,6 +87,7 @@ mod tests {
 #[cfg(feature = "ffi")]
 mod ffi {
     extern crate libc;
+
     use crate::*;
 
     #[repr(C)]
@@ -100,7 +101,16 @@ mod ffi {
         std::slice::from_raw_parts_mut(buf.data, buf.len)
     }
 
+    unsafe fn safe_empty_buf(error: bool) -> Buffer {
+        let data: *mut u8 = std::slice::from_raw_parts_mut(std::ptr::null_mut(), 0).as_mut_ptr();
+        std::mem::forget(data);
+        Buffer { len: 0, data, error }
+    }
+
     unsafe fn encode_buf(content: &[u8]) -> Buffer {
+        if content.len() == 0 {
+            return safe_empty_buf(false)
+        }
         let mut buf = content.to_vec().into_boxed_slice();
         let data = buf.as_mut_ptr();
         let len = buf.len();
@@ -109,16 +119,17 @@ mod ffi {
     }
 
     unsafe fn error_buf() -> Buffer {
-        let data: *mut u8 = std::slice::from_raw_parts_mut(std::ptr::null_mut(), 0).as_mut_ptr();
-        Buffer { len: 0, data, error: true }
+        safe_empty_buf(true)
     }
 
     #[allow(dead_code)]
     #[no_mangle]
     unsafe extern "C" fn free_buf(buf: Buffer) {
-        let s = decode_buf(&buf);
-        let s = s.as_mut_ptr();
-        Box::from_raw(s);
+        if buf.len != 0 {
+            let s = decode_buf(&buf);
+            let s = s.as_mut_ptr();
+            Box::from_raw(s);
+        }
     }
 
     #[allow(dead_code)]

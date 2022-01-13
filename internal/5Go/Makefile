@@ -49,9 +49,18 @@ lib-rust:
 	cp synapsis/target/libsynapsis.a neuron/lib
 	cp synapsis/src/ffi.h neuron/lib
 
+.PHONY: lib-rust-mac
+lib-rust-mac:
+	cd synapsis && cargo build --features ffi
+	mkdir -p neuron/lib
+	cp synapsis/target/debug/libsynapsis.a neuron/lib/libsynapsis.a
+	cp synapsis/src/ffi.h neuron/lib
+
 .PHONY: o3-develop
 o3-develop:
-	cd synapsis && maturin develop
+	cd synapsis && \
+		maturin develop \
+			--cargo-extra-args="--features pyo3"
 
 .PHONY: o3-build
 o3-build:

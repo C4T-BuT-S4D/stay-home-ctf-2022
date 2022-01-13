@@ -50,20 +50,28 @@ func Decrypt(key []byte, encrypted []byte) ([]byte, error) {
 func packBuffer(buf []byte) C.struct_Buffer {
 	res := C.struct_Buffer{}
 	res.len = C.ulong(len(buf))
-	res.data = (*C.char)(unsafe.Pointer(&buf[0]))
+	if len(buf) > 0 {
+		res.data = (*C.char)(unsafe.Pointer(&buf[0]))
+	} else {
+		res.data = (*C.char)(C.NULL)
+	}
 	res.error = 0
 	return res
 }
 
 func unpackBuffer(buf C.struct_Buffer) ([]byte, error) {
-	defer C.free_buf(buf)
 	if buf.error != 0 {
+		C.free_buf(buf)
 		return nil, ErrInBuffer
+	}
+	if buf.len == 0 {
+		return nil, nil
 	}
 	dataPtr := unsafe.Pointer(buf.data)
 	data := C.GoBytes(dataPtr, C.int(buf.len))
 	result := make([]byte, len(data))
 	copy(result, data)
+	C.free_buf(buf)
 	return result, nil
 }
 

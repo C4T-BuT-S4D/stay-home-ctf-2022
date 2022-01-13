@@ -19,6 +19,11 @@ import (
 	npb "neuron/interop"
 )
 
+// Empty buffers are not OK...
+const (
+	minimumDataLength = 5
+)
+
 func NewNeuronService(s *storage.Storage) *NeuronService {
 	return &NeuronService{
 		storage: s,
@@ -45,11 +50,11 @@ func (s *NeuronService) Echo(server npb.NeuronAPI_EchoServer) error {
 			return nil
 		}
 		if err != nil {
-			return logErrorf(codes.Internal, "reading server request: %v", err)
+			return logErrorf(codes.InvalidArgument, "reading server request: %v", err)
 		}
 		decrypted, err := decrypt(shared, req)
 		if err != nil {
-			return logErrorf(codes.InvalidArgument, "could not decrypt message: %v", err)
+			return logErrorf(codes.InvalidArgument, "decrypting message: %v", err)
 		}
 		resp, err := encrypt(shared, decrypted)
 		if err != nil {
@@ -72,14 +77,13 @@ func (s *NeuronService) Session(server npb.NeuronAPI_SessionServer) error {
 			return nil
 		}
 		if err != nil {
-			return logErrorf(codes.Internal, "reading server request: %v", err)
+			return logErrorf(codes.InvalidArgument, "reading server request: %v", err)
 		}
 		decrypted, err := decrypt(shared, req)
 		if err != nil {
-			return logErrorf(codes.InvalidArgument, "decrypting request: %v", err)
+			return logErrorf(codes.InvalidArgument, "decrypting message: %v", err)
 		}
 
-		zap.S().Debugf("Raw request: %v", decrypted)
 		var rawInternalReq npb.Request
 		if err := proto.Unmarshal(decrypted, &rawInternalReq); err != nil {
 			return logErrorf(codes.InvalidArgument, "invalid request: %v", err)
@@ -96,10 +100,7 @@ func (s *NeuronService) Session(server npb.NeuronAPI_SessionServer) error {
 			return logErrorf(codes.Unimplemented, "unknown request type received: %v", rawInternalReq.InternalRequest)
 		}
 		if err != nil {
-			if errors.Is(err, gerrs.ErrDocumentNotFound) {
-				return logErrorf(codes.NotFound, "document not found")
-			}
-			return logErrorf(codes.Internal, "handling request: %v", err)
+			return err
 		}
 		respContent, err := proto.Marshal(resp)
 		if err != nil {
@@ -133,34 +134,51 @@ func (s *NeuronService) handleHandshake(server npb.NeuronAPI_EchoServer) ([]byte
 	if err := proto.Unmarshal(sessSecret, &parsedSecret); err != nil {
 		return nil, logErrorf(codes.Internal, "unmarshalling session secret: %v", err)
 	}
-	zap.S().Debugf("Sending public key %v", parsedSecret.PublicKey)
 	if err := server.Send(parsedSecret.PublicKey); err != nil {
 		return nil, logErrorf(codes.Internal, "sending public key: %v", err)
 	}
-	zap.S().Debugf("Got shared key %v", sessShared)
 	return sessShared, nil
 }
 
 func (s *NeuronService) handleAdd(req *npb.AddDocumentRequest) (*npb.Document, error) {
+	if len(req.User) < minimumDataLength {
+		return nil, logErrorf(codes.InvalidArgument, "user is too short")
+	}
+	if len(req.Name) < minimumDataLength {
+		return nil, logErrorf(codes.InvalidArgument, "name is too short")
+	}
+	if len(req.Content) < minimumDataLength {
+		return nil, logErrorf(codes.InvalidArgument, "content is too short")
+	}
+
 	doc, err := s.storage.Add(req.User, req.Content, req.Name)
 	if err != nil {
-		return nil, fmt.Errorf("adding document to storage: %w", err)
+		return nil, logErrorf(codes.Internal, "adding document to storage: %v", err)
 	}
 	return doc.ToProto(), nil
 }
 
 func (s *NeuronService) handleGet(req *npb.GetDocumentRequest) (*npb.Document, error) {
+	if len(req.Id) < minimumDataLength {
+		return nil, logErrorf(codes.InvalidArgument, "id is too short")
+	}
 	doc, err := s.storage.Get(req.Id)
 	if err != nil {
-		return nil, fmt.Errorf("getting document from storage: %w", err)
+		if errors.Is(err, gerrs.ErrDocumentNotFound) {
+			return nil, logErrorf(codes.NotFound, "document not found")
+		}
+		return nil, logErrorf(codes.Internal, "getting data: %v", err)
 	}
 	return doc.ToProto(), nil
 }
 
 func (s *NeuronService) handleList(req *npb.ListDocumentsRequest) (*npb.ListDocumentsResponse, error) {
+	if len(req.User) < minimumDataLength {
+		return nil, logErrorf(codes.InvalidArgument, "user is too short")
+	}
 	docs, err := s.storage.List(req.User)
 	if err != nil {
-		return nil, fmt.Errorf("listing user documents: %w", err)
+		return nil, logErrorf(codes.Internal, "listing user documents: %v", err)
 	}
 	resp := &npb.ListDocumentsResponse{
 		Documents: make([]*npb.Document, 0, len(docs)),
@@ -189,6 +207,10 @@ func encrypt(shared, data []byte) (*npb.SerializedStuff, error) {
 
 func logErrorf(code codes.Code, fmt string, values ...interface{}) error {
 	err := status.Errorf(code, fmt, values...)
-	zap.S().Errorf("%v", err)
+	if code == codes.Internal {
+		zap.S().Errorf("%v", err)
+	} else {
+		zap.S().Warnf("%v", err)
+	}
 	return err
 }

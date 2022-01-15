@@ -1,3 +1,4 @@
+click==8.0.3
 grpcio==1.43.0
 protobuf==3.19.3
 six==1.16.0

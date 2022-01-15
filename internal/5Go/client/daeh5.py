@@ -8,16 +8,29 @@ import grpc
 import synapsis
 from google.protobuf.empty_pb2 import Empty
 
-from .proto.neuron_pb2 import (
-    Request,
-    AddDocumentRequest,
-    GetDocumentRequest,
-    ListDocumentsRequest,
-    ListDocumentsResponse,
-    Document,
-)
-from .proto.neuron_pb2_grpc import NeuronAPIStub
-from .proto.neurotransmitter_pb2 import AsymmetricKey, SerializedStuff
+# Am I a package?..
+try:
+    from .proto.neuron_pb2 import (
+        Request,
+        AddDocumentRequest,
+        GetDocumentRequest,
+        ListDocumentsRequest,
+        ListDocumentsResponse,
+        Document,
+    )
+    from .proto.neuron_pb2_grpc import NeuronAPIStub
+    from .proto.neurotransmitter_pb2 import AsymmetricKey, SerializedStuff
+except ImportError:
+    from proto.neuron_pb2 import (
+        Request,
+        AddDocumentRequest,
+        GetDocumentRequest,
+        ListDocumentsRequest,
+        ListDocumentsResponse,
+        Document,
+    )
+    from proto.neuron_pb2_grpc import NeuronAPIStub
+    from proto.neurotransmitter_pb2 import AsymmetricKey, SerializedStuff
 
 
 @dataclass

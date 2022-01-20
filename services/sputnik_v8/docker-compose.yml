@@ -29,10 +29,14 @@ services:
       - ./nginx/app.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/proxy_params:/etc/nginx/proxy_params:ro
       - ./nginx/front:/front:ro
+    depends_on:
+      - executor
+      - reporter
     ports:
       - "5678:80"
   db:
     image: postgres:14
+    restart: unless-stopped
     environment:
       - POSTGRES_PASSWORD=sputnik
       - POSTGRES_USER=sputnik

@@ -1,7 +1,7 @@
 FROM node:boron
 
 ADD src/package.json /app/package.json
-ADD src/package-lock.json /app/package-lock.json
+ADD src/npm-shrinkwrap.json /app/npm-shrinkwrap.json
 
 WORKDIR /app
 RUN npm install

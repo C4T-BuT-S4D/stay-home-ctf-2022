@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from collections import defaultdict
 from enum import Enum, auto, unique
 from random import randint, choices
+from base64 import b64encode
 import re
 
 uuid_regex = re.compile(
@@ -130,26 +131,117 @@ class CheckMachine:
 
         return data["result"]
 
-    def generate_random_vm(self) -> (dict, str):
-        ops = choices([self.random_op0], k=randint(20, 80))
+    def generate_random_vm(self) -> (dict, dict, str):
+        r = randint(0, 2)
+        if r == 0:
+            ops = choices([self.random_op0, self.random_op1, self.random_op2,
+                          self.random_op3, self.random_op4], k=randint(20, 40))
 
-        vm = VM()
-        s = ""
+            vm = VM()
+            s = ""
+            context = defaultdict(int)
 
-        vm.push(OPCODE.OP_PUSH, "")
-        for op in ops:
-            s += op(vm)
+            vm.push(OPCODE.OP_RESET)
+            vm.push(OPCODE.OP_PUSH, "")
+            for op in ops:
+                ctx, ss = op(vm)
+                s += ss
+                for k in ctx:
+                    context[k] += ctx[k]
+                vm.push(OPCODE.OP_SWAP)
+                vm.push(OPCODE.OP_ADD)
+
+            vm.push(OPCODE.OP_REPORT)
+
+            return vm.serialize(), {'http.request': 2, 'JSON.stringify': 1, **context}, s
+        elif r == 1:
+            vm = VM()
+            s = rnd_string(100)
+
+            vm.push(OPCODE.OP_PUSH, s)
+            vm.push(OPCODE.OP_PUSH, 0)
+            vm.push(OPCODE.OP_DUP)
+            vm.push(OPCODE.OP_HIDE)
+            vm.push(OPCODE.OP_HLTNCHK)
             vm.push(OPCODE.OP_SWAP)
+            vm.push(OPCODE.OP_PUSH, 1)
+            vm.push(OPCODE.OP_ADD)
+            vm.push(OPCODE.OP_JMP, 6)
+
+            return vm.serialize(), {'http.request': 2, 'JSON.stringify': 1}, s
+        else:
+            vm = VM()
+            s = rnd_string(3)
+
+            vm.push(OPCODE.OP_PUSH, s)
+            vm.push(OPCODE.OP_PUSH, 3)
+
+            vm.push(OPCODE.OP_PUSH, -1)
+            vm.push(OPCODE.OP_ADD)
+            vm.push(OPCODE.OP_SWAP)
+            vm.push(OPCODE.OP_DUP)
             vm.push(OPCODE.OP_ADD)
 
-        vm.push(OPCODE.OP_REPORT)
+            vm.push(OPCODE.OP_SWAP)
+            vm.push(OPCODE.OP_DUP)
+            vm.push(OPCODE.OP_JMPNIF, 7)
 
-        return vm.serialize(), s
+            vm.push(OPCODE.OP_POP)
+            vm.push(OPCODE.OP_REPORT)
 
-    def random_op0(self, vm: VM) -> str:
+            return vm.serialize(), {'http.request': 2, 'JSON.stringify': 1}, s * 8
+
+    def random_op0(self, vm: VM) -> (dict, str):
         s = rnd_string(10)
         vm.push(OPCODE.OP_PUSH, s)
-        return s
+        vm.push(OPCODE.OP_DUP)
+        vm.push(OPCODE.OP_POP)
+        return {}, s
+
+    def random_op1(self, vm: VM) -> (dict, str):
+        s = rnd_string(6)
+        vm.push(OPCODE.OP_PUSH, 'ascii')
+        vm.push(OPCODE.OP_PUSH, 1)
+        vm.push(OPCODE.OP_PUSH, 'base64')
+        vm.push(OPCODE.OP_PUSH, b64encode(s.encode()).decode())
+        vm.push(OPCODE.OP_PUSH, 2)
+        vm.push(OPCODE.OP_CALL, 'context_Buffer_from')
+        vm.push(OPCODE.OP_INVOKE, 'toString')
+        return {'Buffer.from': 1}, s
+
+    def random_op2(self, vm: VM) -> (dict, str):
+        s1 = rnd_string(3)
+        s2 = rnd_string(3)
+        s3 = rnd_string(3)
+        vm.push(OPCODE.OP_PUSH, s1)
+        vm.push(OPCODE.OP_PUSH, s2)
+        vm.push(OPCODE.OP_PUSH, s3)
+        vm.push(OPCODE.OP_HIDE)
+        vm.push(OPCODE.OP_ADD)
+        vm.push(OPCODE.OP_ADD)
+        return {}, s2 + s1 + s3
+
+    def random_op3(self, vm: VM) -> (dict, str):
+        a = randint(-100, 100)
+        b = randint(-100, 100)
+        vm.push(OPCODE.OP_PUSH, a)
+        vm.push(OPCODE.OP_PUSH, b)
+        vm.push(OPCODE.OP_SUB)
+        return {}, str(b - a)
+
+    def random_op4(self, vm: VM) -> (dict, str):
+        a = randint(1, 4)
+        vm.push(OPCODE.OP_PUSH, 0)
+        vm.push(OPCODE.OP_CALL, 'context_Set_constructor')
+        for i in range(a):
+            vm.push(OPCODE.OP_PUSH, 1)
+            vm.push(OPCODE.OP_SWAP)
+            vm.push(OPCODE.OP_PUSH, i)
+            vm.push(OPCODE.OP_HIDE)
+            vm.push(OPCODE.OP_INVOKE, 'add')
+        vm.push(OPCODE.OP_PUSH, 1)
+        vm.push(OPCODE.OP_CALL, 'context_Uint8Array_constructor')
+        return {'Set.constructor': 1, 'Uint8Array.constructor': 1}, ",".join(map(str, range(a)))
 
     def generate_flag_vm(self, flag) -> (dict, str):
         vm = VM()

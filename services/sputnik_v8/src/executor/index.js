@@ -28,8 +28,16 @@ app.post('/api/execute', (req, res) => {
         return;
     }
 
-    res.json(
-        execute(opcodes, vmId, apiKey, 1e6, process.env.REPORTER_ADDRESS ? process.env.REPORTER_ADDRESS : 'localhost')
+    const p = execute(
+        opcodes,
+        vmId,
+        apiKey,
+        1e6,
+        process.env.REPORTER_ADDRESS ? process.env.REPORTER_ADDRESS : 'localhost'
+    );
+
+    p.then((context) => res.json({ ok: true, result: context })).catch(() =>
+        res.json({ ok: false, error: 'unexpected error' })
     );
 });
 

@@ -37,8 +37,8 @@ const checkStackSizeAtLeast = (n) => {
     }
 };
 const checkStackNotEmpty = () => checkStackSizeAtLeast(1);
-const checkStackTopNumberPositive = () => {
-    if (typeof stack[stack.length-1] !== 'number' || stack[stack.length-1] <= 0) {
+const checkStackTopNumberNonNegative = () => {
+    if (typeof stack[stack.length-1] !== 'number' || stack[stack.length-1] < 0) {
         throw 'value is not positive';
     }
 };
@@ -134,17 +134,14 @@ req.end();
         if (!validateOpcode(opcode, opcodeNum)) {
             return { ok: false, error: 'invalid opcode' };
         }
-        program += `    opcode${opcodeNum}:while(true){consumeGas();${translate(
-            opcode,
-            opcodeNum
-        )};checkStack()\n`;
+        program += `    opcode${opcodeNum}:while(true){consumeGas();${translate(opcode, opcodeNum)};checkStack()\n`;
         opcodeNum += 1;
     }
 
     program += '    ' + 'break;}'.repeat(opcodeNum);
     program = template.replace('TEMPLATE_CODE', program);
 
-    return { ok: true, result: vmExecute(program) };
+    return vmExecute(program);
 };
 
 module.exports = execute;

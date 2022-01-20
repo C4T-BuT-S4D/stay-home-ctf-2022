@@ -27,14 +27,14 @@ class Checker(BaseChecker):
     def check(self):
         session = get_initialized_session()
         access_key = self.mch.get_access_key()
-        opcodes, s = self.mch.generate_random_vm()
+        opcodes, context, s = self.mch.generate_random_vm()
         execute_result = self.mch.execute(
             session, opcodes, access_key, s, Status.MUMBLE)
-        print(execute_result)
-        sleep(5)
         report = self.mch.get_report(
             session, access_key, execute_result.vm_id, Status.MUMBLE)
-        self.assert_eq(report, s, "Invalid report on /execute", Status.CORRUPT)
+        self.assert_eq(report, s, "Invalid report on /execute", Status.MUMBLE)
+        self.assert_eq(execute_result.context, {
+                       'CALLS': context}, "Invalid context on /execute", Status.MUMBLE)
         self.cquit(Status.OK)
 
     def put(self, flag_id: str, flag: str, vuln: str):
@@ -44,15 +44,16 @@ class Checker(BaseChecker):
         execute_result = self.mch.execute(
             session, opcodes, access_key, s, Status.MUMBLE)
         self.assert_eq(execute_result.context, {
-                       'CALLS': {'http.request': 1}}, 'Invalid context on /execute', Status.MUMBLE)
+                       'CALLS': {'http.request': 2, 'Buffer.from': 2, 'JSON.stringify': 1}}, 'Invalid context on /execute', Status.MUMBLE)
         self.cquit(Status.OK, execute_result.vm_id,
                    f'{execute_result.vm_id}:{access_key}')
 
     def get(self, flag_id: str, flag: str, vuln: str):
+        sleep(5)
         session = get_initialized_session()
         vm_id, access_key = flag_id.split(":")
         report = self.mch.get_report(
-            session, access_key, vm_id, Status.CORRUPT)
+            session, access_key, vm_id, Status.MUMBLE)
         self.assert_eq(
             report, flag, "Invalid flag on /execute", Status.CORRUPT)
         self.cquit(Status.OK)

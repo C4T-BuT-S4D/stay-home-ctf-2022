@@ -47,9 +47,9 @@ const translate = (opcode, opcodeNum) => {
         case OP_HIDE:
             return 'checkStackSizeAtLeast(3);tmp=stack[stack.length-2];stack[stack.length-2]=stack[stack.length-1];stack[stack.length-1]=tmp;tmp=stack[stack.length-3];stack[stack.length-3]=stack[stack.length-2];stack[stack.length-2]=tmp';
         case OP_CALL:
-            return `checkStackNotEmpty();checkStackTopNumberPositive();tmp=stack.pop();checkStackSizeAtLeast(tmp);while(tmp-->0)args.push(stack.pop());stack.push(${opcode[1]}.apply(undefined, args));args=[]`;
+            return `checkStackNotEmpty();checkStackTopNumberNonNegative();tmp=stack.pop();checkStackSizeAtLeast(tmp);while(tmp-->0)args.push(stack.pop());stack.push(${opcode[1]}.apply(undefined, args));args=[]`;
         case OP_INVOKE:
-            return `checkStackSizeAtLeast(2);obj=stack.pop();checkStackTopNumberPositive();tmp=stack.pop();checkStackSizeAtLeast(tmp);while(tmp-->0)args.push(stack.pop());stack.push(obj.${opcode[1]}.apply(obj, args));args=[]`;
+            return `checkStackSizeAtLeast(2);obj=stack.pop();checkStackTopNumberNonNegative();tmp=stack.pop();checkStackSizeAtLeast(tmp);while(tmp-->0)args.push(stack.pop());stack.push(obj.${opcode[1]}.apply(obj, args));args=[]`;
         case OP_RESET:
             return 'stack=[]';
         case OP_JMP:
@@ -97,14 +97,14 @@ const validateOpcode = (opcode, opcodeNum) => {
             return (
                 opcode.length === 2 &&
                 validateOpcodeString(opcode[1]) &&
-                /^context_[A-Za-z_]+$/.test(opcode[1]) &&
+                /^context_[A-Za-z0-9_]+$/.test(opcode[1]) &&
                 !/http/.test(opcode[1])
             );
         case OP_INVOKE:
             return (
                 opcode.length === 2 &&
                 validateOpcodeString(opcode[1]) &&
-                /^[A-Za-z]+$/.test(opcode[1]) &&
+                /^[A-Za-z0-9]+$/.test(opcode[1]) &&
                 !/prot|glob|eval|Func|func|cons/.test(opcode[1])
             );
         case OP_RESET:

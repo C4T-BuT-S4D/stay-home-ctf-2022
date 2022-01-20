@@ -10,7 +10,7 @@ from time import sleep
 
 class Checker(BaseChecker):
     vulns: int = 1
-    timeout: int = 15
+    timeout: int = 30
     uses_attack_data: bool = True
 
     def __init__(self, *args, **kwargs):

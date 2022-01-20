@@ -17,7 +17,6 @@ axios.defaults.baseURL = apiUrl;
 axios.defaults.withCredentials = true;
 
 Vue.use(Toasted);
-Vue.prototype.$http = axios;
 
 Vue.config.productionTip = false;
 

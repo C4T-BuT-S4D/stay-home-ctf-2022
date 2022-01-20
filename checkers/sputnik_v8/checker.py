@@ -4,9 +4,11 @@ import sys
 import requests
 
 from checklib import *
-from example_lib import *
 from time import sleep
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from example_lib import *
 
 class Checker(BaseChecker):
     vulns: int = 1

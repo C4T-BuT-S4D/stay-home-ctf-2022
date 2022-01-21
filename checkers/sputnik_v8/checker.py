@@ -2,6 +2,7 @@
 
 import sys
 import requests
+import os
 
 from checklib import *
 from time import sleep

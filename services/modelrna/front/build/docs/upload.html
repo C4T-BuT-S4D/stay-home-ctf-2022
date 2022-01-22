@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload your model</title>
+</head>
+<body>
+<h3>Follow this guide to upload your model</h3>
+<ol>
+    <li>You need to <a href="/register">register</a> first.</li>
+    <li>You need to train your model and convert it to the ONNX format.
+    <li> First, download the sample <a href="sample_ds.csv">dataset.</a>
+        <br>
+        Second, train and convert your model using <a href="train_and_save.py">this sample script</a> (will use the
+        catboost library).
+
+        <br>(You can train and use any other ONNX model as long as it use the same input format and work with the
+        same features)
+    </li>
+    <li>Upload your model using <a href="/upload">UI</a> or API (described below)</li>
+</ol>
+
+<h4>To upload your model using the API follow these steps:</h4>
+<ol>
+    <li>Download this <a href="upload_model.py">sample python script</a>.</li>
+    <li>Find your API_TOKEN and VACCINE_KEY on <a href="/home">home</a> page.</li>
+    <li>Fill the "PATH_TO_MODEL"(path to your ONNX model), "API_TOKEN", "VACCINE_KEY", "HOST"(domain) variables</li>
+</ol>
+</body>
+</html>

@@ -3,7 +3,7 @@ import time
 import onnxruntime
 
 
-def validate_model(model_path: str):
+def predict(model_path: str, scalar):
     sess = onnxruntime.InferenceSession(model_path)
     inputs = sess.get_inputs()
     outputs = sess.get_outputs()
@@ -11,13 +11,6 @@ def validate_model(model_path: str):
         raise ValueError("model should have only one input")
     if len(outputs) < 1 or len(outputs) > 2:
         raise ValueError("model should have 1 or 2 outputs (class and probability)")
-
-
-def predict(model_path: str, scalar):
-    start = time.time()
-    sess = onnxruntime.InferenceSession(model_path)
-    inputs = sess.get_inputs()
-    outputs = sess.get_outputs()
     input_name = inputs[0].name
     output_names = [x.name for x in outputs]
     result = sess.run(output_names, {input_name: [

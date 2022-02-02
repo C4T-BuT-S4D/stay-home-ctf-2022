@@ -97,7 +97,7 @@ class Storage(object):
             out = []
             for rec in users:
                 out.append(json.loads(rec.decode()))
-            return out
+            return out[::-1]
         except Exception as e:
             logging.error("Storage.latest_users(): {}".format(str(e)))
             return []

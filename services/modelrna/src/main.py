@@ -150,8 +150,6 @@ async def upload_vaccine_model(st: storage.Storage = fastapi.Depends(get_storage
         with open(model_path, 'wb') as f:
             await concurrency.run_in_threadpool(f.write, decrypted_model)
 
-        # Will raise if model is incorrect
-        await concurrency.run_in_threadpool(ml.validate_model, str(model_path))
     except Exception as e:
         raise fastapi.HTTPException(
             status_code=fastapi.status.HTTP_500_INTERNAL_SERVER_ERROR,

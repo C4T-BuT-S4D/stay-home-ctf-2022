@@ -7,7 +7,6 @@ import random
 import secrets
 import string
 import subprocess
-import time
 import traceback
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -17,6 +16,7 @@ from pathlib import Path
 from threading import Lock, current_thread
 from typing import List, Tuple
 
+import time
 import yaml
 from dockerfile_parse import DockerfileParser
 
@@ -39,7 +39,7 @@ CONTAINER_ALLOWED_OPTIONS = CONTAINER_REQUIRED_OPTIONS + [
     'ports', 'volumes',
     'environment', 'env_file',
     'depends_on',
-    'sysctls', 'privileged', 'security_opt', 'deploy'
+    'sysctls', 'privileged', 'security_opt', 'entrypoint', 'deploy'
 ]
 SERVICE_REQUIRED_OPTIONS = ['pids_limit', 'mem_limit', 'cpus']
 SERVICE_ALLOWED_OPTIONS = CONTAINER_ALLOWED_OPTIONS
@@ -51,6 +51,8 @@ PROXIES = ['nginx', 'envoy']
 CLEANERS = ['dedcleaner']
 
 VALIDATE_DIRS = ['checkers', 'services', 'internal', 'sploits']
+# For local testing
+IGNORE_DIR_PATTERNS = ["node_modules"]
 
 ALLOWED_CHECKER_PATTERNS = [
     "import requests",
@@ -61,7 +63,8 @@ ALLOWED_CHECKER_PATTERNS = [
     "Got requests connection error",
 ]
 FORBIDDEN_CHECKER_PATTERNS = [
-    "requests"
+    "requests.",
+    "from requests"
 ]
 
 
@@ -286,6 +289,9 @@ class StructureValidator(BaseValidator):
     def validate_dir(self, d: Path):
         if not d.exists():
             return
+        for ignore_pattern in IGNORE_DIR_PATTERNS:
+            if ignore_pattern in d.absolute().name:
+                return
         for f in d.iterdir():
             if f.is_file():
                 self.validate_file(f)
@@ -338,7 +344,8 @@ class StructureValidator(BaseValidator):
                 return
 
             for container, container_conf in dc['services'].items():
-                if self._error(isinstance(container_conf, dict), f'config in {path} for container {container} is not dict'):
+                if self._error(isinstance(container_conf, dict),
+                               f'config in {path} for container {container} is not dict'):
                     continue
 
                 for opt in CONTAINER_REQUIRED_OPTIONS:
@@ -502,7 +509,7 @@ def dump_tasks(_args):
     result = {'tasks': []}
     for service in get_services():
         info = service.checker_info
-        checker_type = 'gevent'
+        checker_type = 'forcad'
         if info['attack_data']:
             checker_type += '_pfr'
 
@@ -511,7 +518,7 @@ def dump_tasks(_args):
             'checker': f'{service.name}/checker.py',
             'checker_timeout': info['timeout'],
             'checker_type': checker_type,
-            'places': info['timeout'],
+            'places': info['vulns'],
             'puts': 1,
             'gets': 1,
         })

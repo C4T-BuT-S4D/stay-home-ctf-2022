@@ -64,6 +64,7 @@ class ModelrnaLib:
         self.c.assert_eq(type(data), list, "Invalid JSON response on /users")
         if data:
             elem = random.choice(data)
+            self.c.assert_eq(type(elem), dict, 'Invalid JSON response on /users')
             for k in ('user_id', 'username', 'email', 'vaccine_info'):
                 self.c.assert_in(k, elem, f"Invalid JSON response on /users: key '{k}' is not present")
         return data

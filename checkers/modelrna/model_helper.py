@@ -145,16 +145,3 @@ class ModelHelper:
             )
         if self.onnx_model:
             onnx.save(self.onnx_model, out_path)
-
-# if __name__ == '__main__':
-#     db = DatasetBuilder().random_rows(50)
-#     db.to_csv('sample_ds.csv')
-# one_row = db.random_row()
-# db.add_row(one_row, 1)
-# X, y = db.build()
-# mh = ModelHelper()
-# cbm = mh.build_cb_model(X, y)
-# mh.build_onnx_model()
-# print(cbm.predict([one_row, ]))
-# mh.save("/tmp/catboost_m.onnx")
-# mh.

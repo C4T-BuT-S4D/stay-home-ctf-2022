@@ -72,15 +72,9 @@ class Checker(BaseChecker):
 
         user_info = self.mlib.register(session, username, password, vaccine_name)
         user_id = user_info['user_id']
-        # print(user_id)
 
-        latest_users = self.mlib.list_latest_users(session)
-        latest_users = {x['user_id']: x for x in latest_users}
-        self.assert_in(user_id, latest_users, 'Failed to find user in the /users')
-
-        public_info = latest_users[user_id]
-        self.assert_eq(public_info['username'], username, 'Invalid user data provided on /users')
-        self.assert_eq(public_info['user_id'], user_id, 'Invalid user data provided on /users')
+        # Just check that latest_users return valid format.
+        self.mlib.list_latest_users(session)
 
         user_info = self.mlib.get_user_info(session)
         self.assert_eq(user_info['username'], username, 'Invalid data provided on /userinfo')

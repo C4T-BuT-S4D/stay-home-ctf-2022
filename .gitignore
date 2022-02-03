@@ -9,8 +9,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -74,4 +72,3 @@ dmypy.json
 .DS_Store
 .vscode
 .idea
-

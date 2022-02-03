@@ -1,0 +1,28 @@
+[package]
+name = "synapsis"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "synapsis"
+path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+aes = "0.7.5"
+x25519-dalek = "1"
+rand = "0.7"
+rand_core = "0.5"
+protobuf = "2.25.1"
+libc = "0.2.103"
+
+[dependencies.pyo3]
+version = "0.15.1"
+optional = true
+features = ["extension-module"]
+
+[features]
+default = []
+ffi = []

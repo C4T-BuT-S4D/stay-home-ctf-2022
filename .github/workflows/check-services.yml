@@ -3,29 +3,29 @@ name: check-services
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
     branches:
-    - master
+      - master
 
 jobs:
   list-services:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
 
-    - name: install requirements
-      run: pip install -r requirements.txt
+      - name: install requirements
+        run: pip install -r requirements.txt
 
-    - name: install checkers requirements
-      run: pip install -r checkers/requirements.txt
+      - name: install checkers requirements
+        run: pip install -r checkers/requirements.txt
 
-    - name: list services
-      run: ./check.py list
+      - name: list services
+        run: ./check.py list
 
   check-single-service:
     runs-on: ubuntu-latest
@@ -35,68 +35,69 @@ jobs:
     strategy:
       matrix:
         service:
-        - sputnik_v8
+          - sputnik_v8
+          - 5Go
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
 
-    - name: install requirements
-      run: pip install -r requirements.txt
+      - name: install requirements
+        run: pip install -r requirements.txt
 
-    - name: install checkers requirements
-      run: pip install -r checkers/requirements.txt
+      - name: install checkers requirements
+        run: pip install -r checkers/requirements.txt
 
-    - name: validate service ${{ matrix.service }}
-      run: ./check.py validate
-      env:
-        SERVICE: ${{ matrix.service }}
+      - name: validate service ${{ matrix.service }}
+        run: ./check.py validate
+        env:
+          SERVICE: ${{ matrix.service }}
 
-    - name: up service ${{ matrix.service }}
-      run: ./check.py up
-      env:
-        SERVICE: ${{ matrix.service }}
+      - name: up service ${{ matrix.service }}
+        run: ./check.py up
+        env:
+          SERVICE: ${{ matrix.service }}
 
-    - name: wait for service ${{ matrix.service }}
-      run: sleep 30
+      - name: wait for service ${{ matrix.service }}
+        run: sleep 30
 
-    - name: check service ${{ matrix.service }} small
-      run: ./check.py check
-      env:
-        SERVICE: ${{ matrix.service }}
-        RUNS: 10
+      - name: check service ${{ matrix.service }} small
+        run: ./check.py check
+        env:
+          SERVICE: ${{ matrix.service }}
+          RUNS: 10
 
-    - name: down service ${{ matrix.service }}
-      run: ./check.py down
-      env:
-        SERVICE: ${{ matrix.service }}
+      - name: down service ${{ matrix.service }}
+        run: ./check.py down
+        env:
+          SERVICE: ${{ matrix.service }}
 
-    - name: up service ${{ matrix.service }}
-      run: ./check.py up
-      env:
-        SERVICE: ${{ matrix.service }}
+      - name: up service ${{ matrix.service }}
+        run: ./check.py up
+        env:
+          SERVICE: ${{ matrix.service }}
 
-    - name: wait for service ${{ matrix.service }}
-      run: sleep 30
+      - name: wait for service ${{ matrix.service }}
+        run: sleep 30
 
-    - name: check service ${{ matrix.service }} big
-      run: ./check.py check
-      env:
-        SERVICE: ${{ matrix.service }}
-        RUNS: 100
+      - name: check service ${{ matrix.service }} big
+        run: ./check.py check
+        env:
+          SERVICE: ${{ matrix.service }}
+          RUNS: 100
 
-    - name: down service ${{ matrix.service }}
-      run: ./check.py down
-      env:
-        SERVICE: ${{ matrix.service }}
-      if: ${{ always() }}
+      - name: logs after failure
+        run: ./check.py logs
+        if: ${{ failure() }}
 
-    - name: logs after failure
-      run: ./check.py logs
-      if: ${{ failure() }}
+      - name: down service ${{ matrix.service }}
+        run: ./check.py down
+        env:
+          SERVICE: ${{ matrix.service }}
+        if: ${{ always() }}
 
   check-all-services:
     runs-on: ubuntu-latest
@@ -104,38 +105,38 @@ jobs:
     needs: check-single-service
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
 
-    - name: install requirements
-      run: pip install -r requirements.txt
+      - name: install requirements
+        run: pip install -r requirements.txt
 
-    - name: install checkers requirements
-      run: pip install -r checkers/requirements.txt
+      - name: install checkers requirements
+        run: pip install -r checkers/requirements.txt
 
-    - name: up all services
-      run: ./check.py up
-      env:
-        SERVICE: all
+      - name: up all services
+        run: ./check.py up
+        env:
+          SERVICE: all
 
-    - name: wait for services
-      run: sleep 30
+      - name: wait for services
+        run: sleep 30
 
-    - name: check all services
-      run: ./check.py check
-      env:
-        SERVICE: all
-        RUNS: 50
+      - name: check all services
+        run: ./check.py check
+        env:
+          SERVICE: all
+          RUNS: 50
 
-    - name: down all services
-      run: ./check.py down
-      env:
-        SERVICE: all
-      if: ${{ always() }}
+      - name: down all services
+        run: ./check.py down
+        env:
+          SERVICE: all
+        if: ${{ always() }}
 
-    - name: logs after failure
-      run: ./check.py logs
-      if: ${{ failure() }}
+      - name: logs after failure
+        run: ./check.py logs
+        if: ${{ failure() }}

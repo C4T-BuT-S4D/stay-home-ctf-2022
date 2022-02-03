@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package neuron.neuron;
+option go_package = "neuron/interop";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "neurotransmitter.proto";
+
+message Document {
+    string id = 1;
+    string user = 2;
+    string content = 3;
+    google.protobuf.Timestamp created_at = 4;
+}
+
+message AddDocumentRequest {
+    string user = 1;
+    string name = 2;
+    string content = 3;
+}
+
+message ListDocumentsRequest {
+    string user = 1;
+}
+
+message GetDocumentRequest {
+    string id = 1;
+}
+
+message ListDocumentsResponse {
+    repeated Document documents = 1;
+}
+
+message Request {
+    oneof internal_request {
+        AddDocumentRequest add = 1;
+        ListDocumentsRequest list = 2;
+        GetDocumentRequest get = 3;
+    }
+}
+
+service NeuronAPI {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc Echo(stream neurotransmitter.SerializedStuff) returns (stream neurotransmitter.SerializedStuff);
+    rpc Session(stream neurotransmitter.SerializedStuff) returns (stream neurotransmitter.SerializedStuff);
+}

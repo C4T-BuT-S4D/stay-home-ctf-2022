@@ -36,6 +36,11 @@ app.post('/api/execute', (req, res) => {
         process.env.REPORTER_ADDRESS ? process.env.REPORTER_ADDRESS : 'localhost'
     );
 
+    if (p.error !== undefined) {
+        res.json(p);
+        return;
+    }
+
     p.then((context) => res.json({ ok: true, result: context })).catch(() =>
         res.json({ ok: false, error: 'unexpected error' })
     );

@@ -47,7 +47,7 @@ class Checker(BaseChecker):
         execute_result = self.mch.execute(
             session, opcodes, access_key, s, Status.MUMBLE)
         self.assert_eq(execute_result.context, {
-                       'CALLS': {'http.request': 2, 'Buffer.from': 2, 'JSON.stringify': 1}}, 'Invalid context on /execute', Status.MUMBLE)
+                       'CALLS': {'http.request': 2, 'Buffer.from': 2, 'JSON.stringify': 1, 'parseInt': 3, 'isNaN': 3}}, 'Invalid context on /execute', Status.MUMBLE)
         self.cquit(Status.OK, execute_result.vm_id,
                    f'{execute_result.vm_id}:{access_key}')
 

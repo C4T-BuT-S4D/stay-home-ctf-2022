@@ -72,11 +72,11 @@ const translate = (opcode, opcodeNum) => {
 };
 
 const validateOpcodeNumber = (value) => {
-    return typeof value == 'number' && -1024 <= value && value < 1024;
+    return typeof value === 'number' && -1024 <= value && value < 1024;
 };
 
 const validateOpcodeString = (value) => {
-    return typeof value == 'string' && value.length <= 1024;
+    return typeof value === 'string' && value.length <= 1024;
 };
 
 const validateOpcodeValue = (value) => validateOpcodeNumber(value) || validateOpcodeString(value);
@@ -84,7 +84,11 @@ const validateOpcodeValue = (value) => validateOpcodeNumber(value) || validateOp
 const validateOpcode = (opcode, opcodeNum) => {
     switch (opcode[0]) {
         case OP_PUSH:
-            return opcode.length === 2 && validateOpcodeValue(opcode[1]);
+            return (
+                opcode.length === 2 &&
+                validateOpcodeValue(opcode[1]) &&
+                (typeof opcode[1] !== 'string' || /^[A-Za-z0-9=_]+$/.test(opcode[1]))
+            );
         case OP_POP:
             return opcode.length === 1;
         case OP_DUP:
@@ -105,7 +109,7 @@ const validateOpcode = (opcode, opcodeNum) => {
                 opcode.length === 2 &&
                 validateOpcodeString(opcode[1]) &&
                 /^[A-Za-z0-9]+$/.test(opcode[1]) &&
-                !/prot|glob|eval|Func|func|cons/.test(opcode[1])
+                !/prot|glob|eval|Func|func|cons|def|__|to/.test(opcode[1])
             );
         case OP_RESET:
             return opcode.length === 1;

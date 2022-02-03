@@ -21,7 +21,12 @@ const validateValue = (value) => {
     if (typeof value.size === 'number') {
         return value.size <= 1024;
     }
-    return true;
+    if (typeof value === 'function') {
+        return false;
+    }
+
+    let n = context_parseInt(value, 10);
+    return context_isNaN(n) || -1024 <= value && value < 1024;
 };
 const checkStack = () => {
     if (!stack.every(validateValue)) {

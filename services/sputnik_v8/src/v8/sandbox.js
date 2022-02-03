@@ -17,7 +17,7 @@ Function.prototype.sandboxify = function (context, name) {
 };
 
 module.exports = (context) =>
-    ['JSON.parse', 'JSON.stringify', 'http.request'].reduce(
+    ['JSON.parse', 'JSON.stringify', 'http.request', 'parseInt', 'isNaN'].reduce(
         (cc, fn) => Object.assign(cc, { [`context_${fn.replace('.', '_')}`]: eval(fn).contextify(context, fn) }),
         [
             'Set',

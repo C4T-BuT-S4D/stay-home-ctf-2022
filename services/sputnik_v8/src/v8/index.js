@@ -14,11 +14,22 @@ module.exports = function (code) {
     });
     vm.run(code);
     return new Promise((resolve, reject) => {
-        setTimeout(() => reject('error'), 5000);
-        setInterval(() => {
+        let interval = setInterval(() => {
             if (context[CONTEXT_CALLS]['http.request'] >= 2) {
                 resolve(context);
+                if (interval !== null) {
+                    clearInterval(interval);
+                    interval = null;
+                }
             }
         }, 100);
+
+        setTimeout(() => {
+            reject('error');
+            if (interval !== null) {
+                clearInterval(interval);
+                interval = null;
+            }
+        }, 5000);
     });
 };

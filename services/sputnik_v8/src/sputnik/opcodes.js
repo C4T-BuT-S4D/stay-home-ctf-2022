@@ -87,7 +87,7 @@ const validateOpcode = (opcode, opcodeNum) => {
             return (
                 opcode.length === 2 &&
                 validateOpcodeValue(opcode[1]) &&
-                (typeof opcode[1] !== 'string' || /^[A-Za-z0-9=_]+$/.test(opcode[1]))
+                (typeof opcode[1] !== 'string' || /^[A-Za-z0-9=_]*$/.test(opcode[1]))
             );
         case OP_POP:
             return opcode.length === 1;
@@ -109,7 +109,7 @@ const validateOpcode = (opcode, opcodeNum) => {
                 opcode.length === 2 &&
                 validateOpcodeString(opcode[1]) &&
                 /^[A-Za-z0-9]+$/.test(opcode[1]) &&
-                !/prot|glob|eval|Func|func|cons|def|__|to/.test(opcode[1])
+                !/prot|glob|eval|Func|func|cons|def|__/.test(opcode[1])
             );
         case OP_RESET:
             return opcode.length === 1;

@@ -54,7 +54,7 @@ func (s *Storage) Add(user, content, name string) (*Document, error) {
 }
 
 func (s *Storage) Get(id string) (*Document, error) {
-	raw, err := s.db.QueryDocument(`SELECT * FROM documents WHERE id = ?`, id)
+	raw, err := s.db.QueryDocument(`SELECT * FROM documents WHERE id = ? ORDER BY created_at LIMIT 1`, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching document: %w", err)
 	}
@@ -67,7 +67,7 @@ func (s *Storage) Get(id string) (*Document, error) {
 }
 
 func (s *Storage) List(user string) ([]Document, error) {
-	q := fmt.Sprintf(`SELECT * FROM documents WHERE user = ? ORDER BY created_at DESC LIMIT %d`, maxListSize)
+	q := fmt.Sprintf(`SELECT * FROM documents WHERE user = ? ORDER BY created_at LIMIT %d`, maxListSize)
 	curs, err := s.db.Query(q, user)
 	if err != nil {
 		return nil, fmt.Errorf("fetching documents for user %s: %w", user, err)

@@ -47,7 +47,7 @@ class Checker(BaseChecker):
             for _ in range(random.randint(10, 20)):
                 user = random.choice(users)
                 content = rnd_string(random.randint(24, 348), alphabet=string.printable)
-                name = rnd_string(10)
+                name = rnd_string(random.choice((7, 8, 10, 11, 13, 14)))
                 doc = session1.add_document(user, content, name)
                 self.assert_eq(doc.id.startswith(name), True, 'Invalid document returned')
                 real_doc = session1.get_document(doc.id)
@@ -59,8 +59,8 @@ class Checker(BaseChecker):
                 random.shuffle(users)
                 for user in users:
                     lst = check_session.list_documents(user)
-                    self.assert_eq(len(lst), len(created[user]), 'Invalid number of documents for user')
-                    for x, y in zip(lst[::-1], created[user]):
+                    self.assert_gte(len(lst), len(created[user]), 'Invalid number of documents for user')
+                    for x, y in zip(lst, created[user]):
                         self.assert_docs_equal(x, y)
 
             with self.d.session() as session3:
@@ -68,8 +68,8 @@ class Checker(BaseChecker):
                 random.shuffle(users)
                 for user in users:
                     lst = check_session.list_documents(user)
-                    self.assert_eq(len(lst), len(created[user]), 'Invalid number of documents for user')
-                    for x, y in zip(lst[::-1], created[user]):
+                    self.assert_gte(len(lst), len(created[user]), 'Invalid number of documents for user')
+                    for x, y in zip(lst, created[user]):
                         self.assert_docs_equal(x, y)
                 random.shuffle(users)
                 for user, docs in created.items():
@@ -102,7 +102,7 @@ class Checker(BaseChecker):
 
         with self.d.session() as session:
             docs = session.list_documents(user)
-            self.assert_eq(len(docs), 1, 'Invalid document listing', status=Status.CORRUPT)
+            self.assert_gte(len(docs), 1, 'Invalid document listing', status=Status.CORRUPT)
 
             doc = docs[0]
             self.assert_eq(doc.user, user, 'Invalid document returned', status=Status.CORRUPT)

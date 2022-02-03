@@ -37,6 +37,9 @@ jobs:
       - name: list services
         run: ./check.py list
 
+      - name: dump services config
+        run: ./check.py dump_tasks
+
   check-single-service:
     runs-on: ubuntu-latest
 

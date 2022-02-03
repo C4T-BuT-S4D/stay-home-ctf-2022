@@ -7,7 +7,6 @@ import random
 import secrets
 import string
 import subprocess
-import time
 import traceback
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -17,6 +16,7 @@ from pathlib import Path
 from threading import Lock, current_thread
 from typing import List, Tuple
 
+import time
 import yaml
 from dockerfile_parse import DockerfileParser
 
@@ -509,7 +509,7 @@ def dump_tasks(_args):
     result = {'tasks': []}
     for service in get_services():
         info = service.checker_info
-        checker_type = 'gevent'
+        checker_type = 'forcad'
         if info['attack_data']:
             checker_type += '_pfr'
 
@@ -518,7 +518,7 @@ def dump_tasks(_args):
             'checker': f'{service.name}/checker.py',
             'checker_timeout': info['timeout'],
             'checker_type': checker_type,
-            'places': info['timeout'],
+            'places': info['vulns'],
             'puts': 1,
             'gets': 1,
         })

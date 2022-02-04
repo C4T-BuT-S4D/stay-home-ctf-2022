@@ -4,6 +4,7 @@ RUN apt-get update && apt-get upgrade -yyq
 RUN apt-get install socat -yyq
 
 ADD --chown=root ./kuar-server /kuar-server
+RUN chmod ugo+x ./kuar-server
 
 WORKDIR /
 

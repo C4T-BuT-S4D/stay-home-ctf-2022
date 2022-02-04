@@ -134,6 +134,13 @@ uint8_t* Proto::EncryptPacket(uint8_t* packet, uint32_t* size) {
 uint8_t* Proto::DecryptPacket(uint8_t* packet, uint32_t* size) {
     uint8_t* decPacket = m_cipherCtx->DecryptECB(packet, *size, m_key);
     int8_t padByte = decPacket[*size - 1];
+ 
+    for (uint32_t i = *size - 1; i > (*size - padByte); i--) {
+        if (decPacket[i] != padByte) {
+            Send((uint8_t*)"[-] Incorrect padding!", sizeof("[-] Incorrect padding!"));
+            exit(0);
+        }
+    }
 
     *size -= padByte;
     uint8_t* tmp = new uint8_t[*size];

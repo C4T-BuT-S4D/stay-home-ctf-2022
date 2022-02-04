@@ -25,10 +25,9 @@ bool UserManager::Login() {
     m_session->Send((uint8_t*)"[?] Username: ", sizeof("[?] Username: "));
     
     // get user answer
-    uint8_t* Username = new uint8_t[USERNAME_MAX_SIZE + 1];
+    uint8_t* Username = new uint8_t[USERNAME_MAX_SIZE];
     std::memset(Username, 0, USERNAME_MAX_SIZE);
     int nbytes = m_session->Recv(Username, USERNAME_MAX_SIZE);
-    Username[nbytes] = '\0';
 
     // create path to user dir
     uint32_t UserPathSize = USERNAME_MAX_SIZE + strlen(DIR_PATH) 
@@ -93,10 +92,9 @@ bool UserManager::Register() {
     m_session->Send((uint8_t*)"[?] Username: ", sizeof("[?] Username: "));
     
     // get user answer
-    uint8_t* Username = new uint8_t[USERNAME_MAX_SIZE + 1];
+    uint8_t* Username = new uint8_t[USERNAME_MAX_SIZE];
     std::memset(Username, 0, USERNAME_MAX_SIZE);
     uint32_t nbytes = m_session->Recv(Username, USERNAME_MAX_SIZE);
-    Username[nbytes] = '\0';
 
     // create path to user dir
     uint32_t UserPathSize = USERNAME_MAX_SIZE + strlen(DIR_PATH) 
@@ -180,9 +178,9 @@ void UserManager::Trim(char* str) {
 int32_t UserManager::UpdateProfile() {
     m_session->Send((uint8_t*)UPDATE_PROFILE_MSG, sizeof(UPDATE_PROFILE_MSG));
     
-    uint8_t* userUpdateProfilePacket = new uint8_t[UPDATE_PROFILE_PACKET_SIZE + 1];
+    uint8_t* userUpdateProfilePacket = new uint8_t[UPDATE_PROFILE_PACKET_SIZE];
+    std::memset(userUpdateProfilePacket, 0, UPDATE_PROFILE_PACKET_SIZE);
     int nbytes = m_session->Recv(userUpdateProfilePacket, UPDATE_PROFILE_PACKET_SIZE);
-    userUpdateProfilePacket[nbytes] = '\0';
 
     uint32_t delimCnt = utils::count(userUpdateProfilePacket, '|');
 
@@ -303,21 +301,32 @@ int32_t UserManager::GetQR(void) {
     }
 
     // read profile data
-    std::vector<std::string> profileData = ReadProfile();
+    size_t profilePathSize = sizeof(DIR_PATH) + strlen(m_Username)
+        + sizeof(PROFILE_FILENAME) + 16;
+    char* profilePath = new char[profilePathSize];
 
-    if (profileData.size() == 0) {
+    std::memset(profilePath, 0, profilePathSize);
+    std::sprintf(profilePath, "%s%s/%s", DIR_PATH, m_Username, PROFILE_FILENAME);
+
+    int32_t profileDataSize = 0;
+    uint8_t* profileData = utils::ReadFile(profilePath, &profileDataSize);
+
+    if (profileDataSize == 0) {
         return 1;
     }
 
-    std::string stringForQr;
+    std::vector<uint8_t> vectorForQr;
 
-    for (size_t i = 0; i < profileData.size(); i++) {
-        stringForQr += profileData[i];
-        stringForQr += "|";
+    for (size_t i = 0; i < profileDataSize; i++) {
+        if (profileData[i] == '\n') {
+            vectorForQr.push_back('|');
+        } else {
+            vectorForQr.push_back(profileData[i]);
+        } 
     }
 
     const qrcodegen::QrCode::Ecc errCorLvl = qrcodegen::QrCode::Ecc::LOW;
-    const qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText(stringForQr.c_str(), errCorLvl);
+    const qrcodegen::QrCode qr = qrcodegen::QrCode::encodeBinary(vectorForQr, errCorLvl);
 
     std::string stringQrCode = QrToString(qr);
     m_session->Send((uint8_t*)stringQrCode.c_str(), stringQrCode.size());

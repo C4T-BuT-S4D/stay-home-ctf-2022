@@ -15,10 +15,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from kuar_lib import *
 
 def get_name():
-    return rnd_username(12)
+    return rnd_string(12)
 
 def get_password():
-    return rnd_password(20)
+    return rnd_string(24)
 
 def gen_profile():
     data = []

@@ -53,6 +53,7 @@ int32_t Proto::Recv(uint8_t* packet, uint32_t size) {
     }
     
     m_buf = DecryptPacket(packet, &m_packetSize);
+    std::memset(packet, 0, size);
     std::memcpy(packet, m_buf, m_packetSize);
     delete[] m_buf;
 

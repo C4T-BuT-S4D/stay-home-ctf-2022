@@ -11,6 +11,7 @@ from model_helper import ModelHelper, DatasetBuilder
 from checklib import status, BaseChecker, get_initialized_session, rnd_username, rnd_password, rnd_string, cquit
 
 import requests
+import re
 
 
 class Checker(BaseChecker):
@@ -25,6 +26,7 @@ class Checker(BaseChecker):
         super(Checker, self).__init__(*args, **kwargs)
         self.mlib = ModelrnaLib(self)
         self.model_helper = ModelHelper()
+        self.uuid_regexp = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
 
     def session_with_requests(self):
         sess = get_initialized_session()
@@ -65,6 +67,10 @@ class Checker(BaseChecker):
         except requests.exceptions.ConnectionError:
             self.cquit(status.Status.DOWN, 'Connection error', 'Got requests connection error')
 
+    def validate_uuid(self, uuid):
+        self.assert_eq(bool(self.uuid_regexp.fullmatch(uuid)), True, 'Invalid id format')
+
+
     def check(self):
         session = self.session_with_requests()
 
@@ -72,6 +78,7 @@ class Checker(BaseChecker):
 
         user_info = self.mlib.register(session, username, password, vaccine_name)
         user_id = user_info['user_id']
+        self.validate_uuid(user_id)
 
         # Just check that latest_users return valid format.
         self.mlib.list_latest_users(session)
@@ -112,6 +119,7 @@ class Checker(BaseChecker):
                        'Invalid model prediction on vaccine "{}"'.format(vaccine_info['vaccine_id']))
 
         test_id = prediction_response['test_id']
+        self.validate_uuid(test_id)
         test_response = self.mlib.get_test_result(predict_sess, test_id)
         self.assert_eq(ssn, test_response['ssn'], "Invalid ssn returned on /vaccine/test/<test_id>")
         self.assert_eq(test_response['prediction'], known_prediction,
@@ -131,6 +139,7 @@ class Checker(BaseChecker):
 
         user_info = self.mlib.register(session, username, password, vaccine_name)
         user_id = user_info['user_id']
+        self.validate_uuid(user_id)
 
         user_info = self.mlib.get_user_info(session)
         self.assert_eq(user_info['username'], username, 'Invalid data provided on /userinfo')
@@ -153,6 +162,7 @@ class Checker(BaseChecker):
         prediction_response = self.mlib.end_to_end_prediction(predict_sess, vaccine_id=vaccine_info['vaccine_id'],
                                                               data=data_to_send)
         test_id = prediction_response['test_id']
+        self.validate_uuid(test_id)
         self.cquit(status.Status.OK, user_id, f'{username}:{password}:{test_id}')
 
     def get(self, flag_id: str, flag: str, vuln: str):

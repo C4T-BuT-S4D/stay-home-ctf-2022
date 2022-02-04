@@ -258,4 +258,4 @@ if __name__ == '__main__':
     formatter = logging.Formatter('%(levelname)s - %(message)s')
     handler.setFormatter(formatter)
     root.addHandler(handler)
-    uvicorn.run("main:app", port=8000, reload=False, access_log=False, host='0.0.0.0', workers=10)
+    uvicorn.run("main:app", port=8000, reload=False, access_log=False, host='0.0.0.0', workers=9)

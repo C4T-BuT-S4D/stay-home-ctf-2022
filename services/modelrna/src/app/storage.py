@@ -150,7 +150,6 @@ class Storage(object):
     async def revoke_challenge(self, chal_id):
         try:
             await self.redis_cli.delete(self.CAPTCHA_CHALLENGES_PREFIX + ":" + chal_id)
-            logging.error("DELETED captcha")
         except Exception as e:
             logging.error("failed to delete captcha key: {}".format(str(e)))
             raise e

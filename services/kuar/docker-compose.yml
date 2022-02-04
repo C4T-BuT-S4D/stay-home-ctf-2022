@@ -9,7 +9,7 @@ services:
       - ./service/users:/users
     ports:
       - 9999:1337
-    restart: always
+    restart: unless-stopped
     pids_limit: 512
     mem_limit: 2048M
 

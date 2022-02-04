@@ -38,7 +38,7 @@ class Checker(BaseChecker):
     def action(self, action, *args, **kwargs):
         try:
             super(Checker, self).action(action, *args, **kwargs)
-        except pwnlib.exception.PwnlibException:
+        except socket.timeout:
             self.cquit(Status.DOWN, 'Connection error',
                        'Got requests connection error')
 

@@ -1,13 +1,11 @@
 from checklib import *
-from pwn import *
+import socket
 from Crypto.Cipher import AES
 from PIL import Image
 from pyzbar.pyzbar import decode
 
 import os
 import tempfile
-
-context.log_level = 'CRITICAL'
 
 PORT = 9999
 DEFAULT_RECV_SIZE = 4096
@@ -25,10 +23,10 @@ class CheckMachine:
     
     def connection(self):
         try:
-            self.sock = remote(self.c.host, 
-				self.port, 
-				timeout = TCP_CONNECTION_TIMEOUT 
-			)
+            self.sock = socket.socket()
+            self.sock.settimeout(TCP_CONNECTION_TIMEOUT)
+            server = (self.c.host, self.port)
+            self.sock.connect(server)
         except:
             self.sock = None
             self.c.cquit( Status.DOWN, 

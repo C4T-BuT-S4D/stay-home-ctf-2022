@@ -11,6 +11,7 @@ services:
       - REDIS_HOST=redis
     depends_on:
       - redis
+    restart: unless-stopped
   redis:
     image: redis:latest
     restart: unless-stopped

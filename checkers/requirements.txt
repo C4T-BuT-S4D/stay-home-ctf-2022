@@ -5,4 +5,7 @@ pycryptodomex==3.11.0
 grpcio==1.43.0
 protobuf==3.19.3
 six==1.16.0
+pyzbar==0.1.8
+pwntools
+Pilow==7.0.0
 ./checkers/5Go/client/lib/synapsis-0.1.0-cp39-cp39-manylinux_2_24_x86_64.whl

@@ -1,0 +1,24 @@
+version: '2.4'
+
+services:
+  kuar:
+    build:
+      context: ./service
+      dockerfile: Dockerfile
+    volumes:
+      - ./service/users:/users
+    ports:
+      - 9999:1337
+    restart: always
+    pids_limit: 512
+    mem_limit: 2048M
+
+  cleaner:
+    image: c4tbuts4d/dedcleaner:latest
+    restart: unless-stopped
+    volumes:
+      - "./service/users:/users"
+    environment:
+      - DELETE_AFTER=30m
+      - SLEEP=30m
+      - DIRS=/users

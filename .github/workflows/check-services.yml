@@ -51,6 +51,7 @@ jobs:
           - sputnik_v8
           - 5Go
           - modelrna
+          - kuar
 
     steps:
       - uses: actions/checkout@v2

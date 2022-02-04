@@ -12,6 +12,7 @@ services:
     restart: unless-stopped
     pids_limit: 512
     mem_limit: 2048M
+    cpus: 1
 
   cleaner:
     image: c4tbuts4d/dedcleaner:latest

@@ -15,10 +15,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from kuar_lib import *
 
 def get_name():
-    return os.urandom(7).hex()
+    return rnd_username(12)
 
 def get_password():
-    return os.urandom(7).hex()
+    return rnd_password(20)
 
 def gen_profile():
     data = []
@@ -38,9 +38,9 @@ class Checker(BaseChecker):
     def action(self, action, *args, **kwargs):
         try:
             super(Checker, self).action(action, *args, **kwargs)
-        except socket.timeout:
+        except socket.error as err:
             self.cquit(Status.DOWN, 'Connection error',
-                       'Got requests connection error')
+                       'Got requests connection error, err: {}'.format(err))
 
     def check(self):
         # make connection and send keys

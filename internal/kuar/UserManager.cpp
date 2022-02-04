@@ -25,11 +25,11 @@ bool UserManager::Login() {
     m_session->Send((uint8_t*)"[?] Username: ", sizeof("[?] Username: "));
     
     // get user answer
-    uint8_t* Username = new uint8_t[USERNAME_MAX_SIZE];
+    uint8_t* Username = new uint8_t[USERNAME_MAX_SIZE + 1];
     std::memset(Username, 0, USERNAME_MAX_SIZE);
     int nbytes = m_session->Recv(Username, USERNAME_MAX_SIZE);
     Username[nbytes] = '\0';
-    
+
     // create path to user dir
     uint32_t UserPathSize = USERNAME_MAX_SIZE + strlen(DIR_PATH) 
     + strlen(PASSWORD_FILE) + 16;
@@ -93,7 +93,7 @@ bool UserManager::Register() {
     m_session->Send((uint8_t*)"[?] Username: ", sizeof("[?] Username: "));
     
     // get user answer
-    uint8_t* Username = new uint8_t[USERNAME_MAX_SIZE];
+    uint8_t* Username = new uint8_t[USERNAME_MAX_SIZE + 1];
     std::memset(Username, 0, USERNAME_MAX_SIZE);
     uint32_t nbytes = m_session->Recv(Username, USERNAME_MAX_SIZE);
     Username[nbytes] = '\0';
@@ -180,7 +180,7 @@ void UserManager::Trim(char* str) {
 int32_t UserManager::UpdateProfile() {
     m_session->Send((uint8_t*)UPDATE_PROFILE_MSG, sizeof(UPDATE_PROFILE_MSG));
     
-    uint8_t* userUpdateProfilePacket = new uint8_t[UPDATE_PROFILE_PACKET_SIZE];
+    uint8_t* userUpdateProfilePacket = new uint8_t[UPDATE_PROFILE_PACKET_SIZE + 1];
     int nbytes = m_session->Recv(userUpdateProfilePacket, UPDATE_PROFILE_PACKET_SIZE);
     userUpdateProfilePacket[nbytes] = '\0';
 

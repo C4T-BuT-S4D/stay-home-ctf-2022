@@ -2,7 +2,7 @@
 
 uint8_t* utils::ReadFile(const char* filename, int32_t* outSize)
 {
-    std::ifstream file(filename, std::ios::binary);
+    std::ifstream file(filename);
     file.unsetf(std::ios::skipws);
     std::streampos fileSize;
 

@@ -143,10 +143,9 @@ uint8_t* Proto::DecryptPacket(uint8_t* packet, uint32_t* size) {
     }
 
     *size -= padByte;
-    uint8_t* tmp = new uint8_t[*size];
-    std::memset(tmp, 0, *size);
+    uint8_t* tmp = new uint8_t[*size + 1];
+    std::memset(tmp, 0, *size + 1);
     std::memcpy(tmp, decPacket, *size);
     delete[] decPacket;
-    decPacket = tmp;
-    return decPacket;
+    return tmp;
 };

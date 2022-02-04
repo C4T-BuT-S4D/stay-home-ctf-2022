@@ -55,7 +55,7 @@ class CheckMachine:
         packet = packet + bytes([pad_byte] * pad_byte)
         return packet
     
-    def unpad(self, packet):
+    def unpad(self, packet): 
         pad_byte = packet[-1]
         
         if pad_byte > 0x10:
@@ -63,6 +63,7 @@ class CheckMachine:
 
         if packet[-pad_byte:] == bytes([pad_byte]*pad_byte):
             packet = packet[:-pad_byte]
+
         return packet
 
     def encrypt(self, packet):
@@ -70,7 +71,11 @@ class CheckMachine:
         encPacket = self.ctx.encrypt(packet)
         return encPacket
     
-    def decrypt(self, packet):
+    def decrypt(self, packet):                
+        if len(packet) % 16 != 0:
+            self.c.cquit(Status.MUMBLE, "Protocol error!",
+                "Packet before decrypt size error")
+
         decPacket = self.ctx.decrypt(packet)
         decPacket = self.unpad(decPacket)
         return decPacket
@@ -83,6 +88,7 @@ class CheckMachine:
 
     def recv(self, size):
         data = self.sock.recv(size)
+        #print("raw-recv: ", data)
         data = self.decrypt(data)
         #print("recv: ", data)
         return data
@@ -110,7 +116,7 @@ class CheckMachine:
         self.send(password.encode())
         self.recv(DEFAULT_RECV_SIZE) # get menu
 
-    def update_profile(self, data: str):
+    def update_profile(self, data: bytes):
         self.send(b"2")
         self.recv(DEFAULT_RECV_SIZE)
         self.send(data)
@@ -125,10 +131,15 @@ class CheckMachine:
     def get_qr(self, status):
         self.send(b"3")
         data = b''
-        while True:
+
+        for i in range(0, 15):
             data += self.recv(DEFAULT_RECV_SIZE)
             if b"> " in data:
                 break
+        
+        if len(data) == 0:
+            self.c.cquit(status, "Can't get QR-code",
+                "data is empty")
 
         data = data.split(b'\n')[:-5]
         pixels = []
@@ -141,6 +152,10 @@ class CheckMachine:
                 else:
                     pixel_line.append((0, 0, 0))
             pixels.append(pixel_line)
+
+        if len(pixels) < 4 or len(pixels[0]) < 4:
+            self.c.cquit(status, "Invalid QR-code format",
+                "Pixels is to small")
 
         imgSize = (len(data)-1, len(pixels[0])-1)
 

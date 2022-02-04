@@ -2,6 +2,7 @@ checklib
 onnx==1.8.1
 catboost==1.0.0
 pycryptodomex==3.11.0
+pycryptodome==3.9.7
 grpcio==1.43.0
 protobuf==3.19.3
 six==1.16.0

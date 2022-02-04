@@ -23,7 +23,7 @@ def get_password():
 def gen_profile():
     data = []
     for i in range(6):
-        data.append(os.urandom(16).hex())
+        data.append(os.urandom(19).hex())
     return data
 
 class Checker(BaseChecker):

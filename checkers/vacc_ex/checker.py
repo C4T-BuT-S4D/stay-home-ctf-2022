@@ -99,6 +99,7 @@ class Checker(BaseChecker):
         self.assert_eq(got_vaccine.public.id, vaccine.public.id,
                        "Incorrect public id of user vaccine")
 
+        self.wrap_call(self.client_lib.list, "Can't list public vaccines")
         self.cquit(Status.OK)
 
     def put(self, flag_id: str, flag: str, vuln: str):

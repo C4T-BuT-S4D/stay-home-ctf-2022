@@ -25,7 +25,7 @@ class ClientLib:
         response = self.stub.List(exchange_pb2.ListRequest())
         return response.vaccines
 
-    def create_vaccine(self, auth: exchange_pb2.Auth, name: str, rna_info: str, private_price: float, public_price: float | None = None) -> exchange_pb2.Vaccine:
+    def create_vaccine(self, auth: exchange_pb2.Auth, name: str, rna_info: str, private_price: float, public_price: float = None) -> exchange_pb2.Vaccine:
         req = exchange_pb2.CreateVaccineRequest(
             auth=auth, name=name, rna_info=rna_info, private_price=private_price)
         if public_price is not None:

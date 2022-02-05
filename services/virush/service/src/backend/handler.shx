@@ -20,6 +20,10 @@ class backend/handler {
         read action
 
         case "${action:-}" in
+            "PING")
+                logging::debug "executing PING command"
+                self::handle_ping
+                ;;
             "REGISTER")
                 logging::debug "executing REGISTER command"
                 self::handle_register
@@ -52,6 +56,10 @@ class backend/handler {
 
     function handler::is_logged_in {
         [[ "${self.username:-}" != "" && "${self.password:-}" != "" ]]
+    }
+
+    function handler::handle_ping {
+        echo "SUCCESS: PONG"
     }
 
     function handler::handle_register {

@@ -1,0 +1,23 @@
+version: '2.4'
+services:
+  server:
+    build: server
+    ports:
+      - "8980:8980"
+    mem_limit: 1024m
+    cpus: 1
+    pids_limit: 512
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    restart: unless-stopped
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    mem_limit: 512m
+    volumes:
+      - "redis-data:/data"
+
+volumes:
+  redis-data:

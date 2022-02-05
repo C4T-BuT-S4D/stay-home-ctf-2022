@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+option java_package = "exchange.proto";
+
+message Auth {
+  string token = 1;
+}
+
+message RegisterRequest {
+}
+
+message RegisterResponse {
+  string user_id = 1;
+  string user_password = 2;
+}
+
+message LoginRequest {
+  string user_id = 1;
+  string user_password = 2;
+}
+
+message LoginResponse {
+  Auth auth = 1;
+}
+
+message VaccineInfo {
+  string name = 1;
+  string seller_id = 2;
+  string rna_info = 3;
+}
+
+message Vaccine {
+  VaccineInfo info = 1;
+  SellInfo private = 2;
+  SellInfo public = 3;
+}
+
+message ListVaccineInfo {
+  string name = 1;
+  string stock_id = 2;
+}
+
+message PublicPrice {
+  double price = 1;
+}
+
+message SellInfo {
+  string id = 1;
+  double price = 2;
+}
+
+message CreateVaccineRequest {
+  Auth auth = 1;
+  string name = 2;
+  string rna_info = 3;
+  double private_price = 4;
+  PublicPrice public_price = 5;
+}
+
+message CreateVaccineResponse {
+  Vaccine vaccine = 1;
+}
+
+message BuyRequest {
+  Auth auth = 1;
+  string stock_id = 2;
+}
+
+message BuyResponse {
+  string rna_info = 1;
+}
+
+message ListRequest {
+}
+
+message ListResponse {
+  repeated ListVaccineInfo vaccines = 1;
+}
+
+message BalanceRequest {
+  Auth auth = 1;
+}
+
+message BalanceResponse {
+  double balance = 1;
+}
+
+message PriceRequest {
+  string stock_id = 1;
+}
+
+message PriceResponse {
+  double price = 1;
+}
+
+message GetUserVaccineRequest {
+  Auth auth = 1;
+}
+
+message GetUserVaccineResponse {
+  Vaccine vaccine = 1;
+}
+
+service VaccineExchange {
+  rpc Register (RegisterRequest) returns (RegisterResponse) {
+  }
+  rpc Login (LoginRequest) returns (LoginResponse) {
+  }
+
+  rpc CreateVaccine (CreateVaccineRequest) returns (CreateVaccineResponse) {
+  }
+  rpc Buy (BuyRequest) returns (BuyResponse) {
+  }
+  rpc List (ListRequest) returns (ListResponse) {
+  }
+
+  rpc Balance (BalanceRequest) returns (BalanceResponse) {
+  }
+
+  rpc GetPrice(PriceRequest) returns (PriceResponse) {}
+
+  rpc GetUserVaccine (GetUserVaccineRequest) returns (GetUserVaccineResponse) {
+  }
+}

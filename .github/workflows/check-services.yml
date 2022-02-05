@@ -54,6 +54,7 @@ jobs:
           - sputnik_v8
           - 5Go
           - modelrna
+          - vacc_ex
           - kuar
 
     steps:

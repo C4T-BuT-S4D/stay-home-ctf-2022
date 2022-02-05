@@ -27,6 +27,9 @@ class frontend/channel {
 
         declare -g self.shared_key
         declare -g self.task_id
+
+        declare -g self.input_buffer=""
+        declare -g self.output_buffer=""
     }
 
     function channel::__destroy__ {
@@ -88,25 +91,33 @@ class frontend/channel {
     function channel::forward_input {
         local data
 
-        read -t ${ChannelReadTimeout} -u 0 data \
-            || return 0
+        read -t ${ChannelReadTimeout} -u 0 data || if (( $? != 0 )); then
+            self.input_buffer=${self.input_buffer:-}${data:-}
+            return 0
+        fi
 
-        echo ${data} \
+        echo ${self.input_buffer:-}${data:-} \
             | utils::b64decode \
             | cipher::decrypt "${self.shared_key}" \
             | utils::readline >&${self.pipe_in}
+
+        self.input_buffer=""
     }
 
     function channel::forward_output {
         local data
 
-        read -t ${ChannelReadTimeout} -u ${self.pipe_out} data \
-            || return 0
+        read -t ${ChannelReadTimeout} -u ${self.pipe_out} data || if (( $? != 0 )); then
+            self.output_buffer=${self.output_buffer:-}${data:-}
+            return 0
+        fi
 
-        echo ${data} \
+        echo ${self.output_buffer:-}${data:-} \
             | cipher::encrypt "${self.shared_key}" \
             | utils::b64encode \
             | utils::readline >&1
+
+        self.output_buffer=""
     }
 
     function channel::is_task_working {

@@ -1,6 +1,0 @@
-#!/usr/bin/shx
-
-@module app/config || {
-    declare -rg \
-        AppInputTimeout=0.01
-}

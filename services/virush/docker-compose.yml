@@ -5,7 +5,7 @@ services:
     build: service
     cpus: 2
     pids_limit: 65536
-    mem_limit: 512m
+    mem_limit: 1G
     restart: unless-stopped
     stop_grace_period: 3s
     volumes:
@@ -15,8 +15,8 @@ services:
   nginx:
     image: nginx:latest
     cpus: 1
-    pids_limit: 256
-    mem_limit: 256M
+    pids_limit: 512
+    mem_limit: 512M
     restart: unless-stopped
     stop_grace_period: 3s
     volumes:

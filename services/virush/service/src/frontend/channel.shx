@@ -9,7 +9,7 @@ class frontend/channel {
     @require crypto/handshake
 
     declare -rg \
-        ChannelReadTimeout=0.5
+        ChannelReadTimeout=0.1
 
     function channel::__init__ {
         @arguments! self.keys_directory

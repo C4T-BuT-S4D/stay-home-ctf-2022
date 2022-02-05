@@ -59,6 +59,7 @@ jobs:
           - modelrna
           - vacc_ex
           - kuar
+          - virush
 
     steps:
       - uses: actions/checkout@v2

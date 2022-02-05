@@ -2,7 +2,6 @@ version: '2.4'
 
 services:
   virush:
-    container_name: virush  
     build: service
     cpus: 2
     pids_limit: 65536
@@ -14,7 +13,6 @@ services:
       - "storage:/tmp/storage_directory"
 
   nginx:
-    container_name: virush_nginx
     image: nginx:latest
     cpus: 1
     pids_limit: 256

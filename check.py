@@ -40,7 +40,7 @@ CONTAINER_ALLOWED_OPTIONS = CONTAINER_REQUIRED_OPTIONS + [
     'environment', 'env_file',
     'depends_on',
     'sysctls', 'privileged', 'security_opt', 'entrypoint', 'deploy',
-    'container_name', 'stop_grace_period',
+    'stop_grace_period',
 ]
 SERVICE_REQUIRED_OPTIONS = ['pids_limit', 'mem_limit', 'cpus']
 SERVICE_ALLOWED_OPTIONS = CONTAINER_ALLOWED_OPTIONS

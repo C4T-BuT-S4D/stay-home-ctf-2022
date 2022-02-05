@@ -119,7 +119,7 @@ class Checker(BaseChecker):
         name = rnd_string(10)
 
         vaccine = self.wrap_call(self.client_lib.create_vaccine,
-                                 "Can't create vaccine", auth1, name, flag, choice([0.0001, 0.0002, 0.0003]), randint(133713371337))
+                                 "Can't create vaccine", auth1, name, flag, choice([0.0001, 0.0002, 0.0003]), randint(133713371337, 3133713371337))
 
         self.assert_eq(bool(uuid_regex.fullmatch(vaccine.public.id)), True, "Incorrect vaccine id format")
         self.assert_eq(bool(uuid_regex.fullmatch(vaccine.private.id)), True, "Incorrect vaccine id format")

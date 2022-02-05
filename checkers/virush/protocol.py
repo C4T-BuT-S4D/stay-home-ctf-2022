@@ -15,6 +15,10 @@ class ProtocolException(Exception):
         return f'protocol error: {self.message}'
 
 
+class PingResponse(enum.Enum):
+    SUCCESS = enum.Enum()
+
+
 class RegisterResponse(enum.Enum):
     ALREADY_REGISTERED = enum.auto()
     SUCCESS = enum.auto()
@@ -50,6 +54,16 @@ class ExitResponse(enum.Enum):
 class VirushProtocol:
     def __init__(self, channel: channel.Channel) -> None:
         self.channel = channel
+
+    async def ping(self) -> PingResponse:
+        await self.channel.sendline(f'PING')
+
+        response = await self.channel.recvline()
+
+        if response == f'SUCCESS: PONG':
+            return PingResponse.SUCCESS
+
+        raise ProtocolException('wrong response for ping')
 
     async def register(self, username: str, password: str) -> RegisterResponse:
         await self.channel.sendline(f'REGISTER')

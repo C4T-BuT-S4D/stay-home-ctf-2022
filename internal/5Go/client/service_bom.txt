@@ -4,3 +4,4 @@ __init__.py
 daeh5.py
 client.py
 requirements.txt
+start_env.sh

@@ -16,7 +16,7 @@ class ProtocolException(Exception):
 
 
 class PingResponse(enum.Enum):
-    SUCCESS = enum.Enum()
+    SUCCESS = enum.auto()
 
 
 class RegisterResponse(enum.Enum):

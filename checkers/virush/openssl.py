@@ -15,7 +15,7 @@ DH_PARAM_FILE = os.path.join(
 )
 
 class OpenSSL:
-    TIMEOUT = 0.1
+    TIMEOUT = 0.2
     ALGORITHM = 'aes-128-cbc'
     KEY_SIZE = 32
     BLOCK_SIZE = 16

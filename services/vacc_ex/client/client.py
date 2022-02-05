@@ -19,7 +19,6 @@ def common_params(func):
 
     return wrapper
 
-
 @click.command()
 @common_params
 def list(url: str):
@@ -27,7 +26,6 @@ def list(url: str):
     c = ClientLib(h, int(p))
     for i, stock in enumerate(c.list()):
         print(f"Stock[{i}]:\n\tID: {stock.stock_id}\n\tName: {stock.name}\n")
-
 
 @click.command()
 @common_params
@@ -63,7 +61,6 @@ def monitor(url: str):
         prices = prices[-40:]
         draw_prices(40, prices)
         sleep(0.2)
-
 
 @click.command()
 @common_params

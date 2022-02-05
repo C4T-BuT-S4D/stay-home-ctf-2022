@@ -48,6 +48,9 @@ jobs:
     strategy:
       matrix:
         service:
+          - sputnik_v8
+          - 5Go
+          - modelrna
           - vacc_ex
 
     steps:

@@ -5,11 +5,8 @@ import re
 import grpc
 import requests
 from client_lib import ClientLib
+from random import randint, choice
 import sys
-import os
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 
 uuid_regex = re.compile(
     r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$")
@@ -62,8 +59,11 @@ class Checker(BaseChecker):
         name = rnd_string(10)
         rna_info = rnd_string(32)
 
+        private_price = randint(1, 4)
+        public_price = randint(1000, 4000)
+
         vaccine = self.wrap_call(self.client_lib.create_vaccine,
-                                 "Can't create vaccine", auth1, name, rna_info, 4, 1000)
+                                 "Can't create vaccine", auth1, name, rna_info, public_price, private_price)
 
         got_rna_info = self.wrap_call(
             self.client_lib.buy,  "Can't buy vaccine", auth2, vaccine.private.id)
@@ -75,13 +75,13 @@ class Checker(BaseChecker):
         balance2 = self.wrap_call(
             self.client_lib.balance,"Can't get balance", auth2)
 
-        self.assert_eq(balance1, 9, "Incorrect initial balance")
-        self.assert_eq(balance2, 1, "Incorrect initial balance")
+        self.assert_eq(balance1, 5 + private_price, "Incorrect balance after buy")
+        self.assert_eq(balance2, 5 - private_price, "Incorrect balance after buy")
 
         price = self.wrap_call(self.client_lib.get_price,
                                "Can't get vaccine price", vaccine.private.id)
 
-        self.assert_eq(price, 8, "Incorrect vaccine price after buy")
+        self.assert_eq(price, private_price * 2, "Incorrect vaccine price after buy")
 
         got_vaccine = self.wrap_call(
             self.client_lib.get_user_vaccine,  "Can't get user vaccine", auth1)
@@ -94,7 +94,7 @@ class Checker(BaseChecker):
                        "Incorrect rna info of user vaccine")
         self.assert_eq(got_vaccine.private.id, vaccine.private.id,
                        "Incorrect private id of user vaccine")
-        self.assert_eq(got_vaccine.private.price, 8,
+        self.assert_eq(got_vaccine.private.price, private_price * 2,
                        "Incorrect private price of user vaccine")
         self.assert_eq(got_vaccine.public.id, vaccine.public.id,
                        "Incorrect public id of user vaccine")
@@ -119,7 +119,7 @@ class Checker(BaseChecker):
         name = rnd_string(10)
 
         vaccine = self.wrap_call(self.client_lib.create_vaccine,
-                                 "Can't create vaccine", auth1, name, flag, 0.0001, 133713371337)
+                                 "Can't create vaccine", auth1, name, flag, choice([0.0001, 0.0002, 0.0003]), randint(133713371337))
 
         self.assert_eq(bool(uuid_regex.fullmatch(vaccine.public.id)), True, "Incorrect vaccine id format")
         self.assert_eq(bool(uuid_regex.fullmatch(vaccine.private.id)), True, "Incorrect vaccine id format")

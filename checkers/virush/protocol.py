@@ -105,7 +105,7 @@ class VirushProtocol:
 
     async def get(
             self, username: str, property_name: str, encrypted: bool,
-    ) -> typing.Tuple[GetResponse, str]:
+    ) -> typing.Tuple[GetResponse, typing.Optional[str]]:
         mode = 'ENCRYPTED' if encrypted else ''
 
         await self.channel.sendline(f'GET')
@@ -122,7 +122,11 @@ class VirushProtocol:
         else:
             raise ProtocolException('wrong response for get')
 
-        return result, await self.channel.recvline()
+        return result, (
+            await self.channel.recvline()
+            if result is GetResponse.SUCCESS
+            else None
+        )
 
     async def put(
             self, username: str, property_name: str, encrypted: bool, data: str = '',

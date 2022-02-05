@@ -63,7 +63,7 @@ class Checker(BaseChecker):
         public_price = randint(1000, 4000)
 
         vaccine = self.wrap_call(self.client_lib.create_vaccine,
-                                 "Can't create vaccine", auth1, name, rna_info, public_price, private_price)
+                                 "Can't create vaccine", auth1, name, rna_info, private_price, public_price)
 
         got_rna_info = self.wrap_call(
             self.client_lib.buy,  "Can't buy vaccine", auth2, vaccine.private.id)

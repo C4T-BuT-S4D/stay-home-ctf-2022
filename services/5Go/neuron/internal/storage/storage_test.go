@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -14,6 +15,7 @@ func createStorage(t *testing.T) (*Storage, func()) {
 
 	path, err := os.MkdirTemp("", "testdb")
 	require.NoError(t, err)
+	t.Logf("Created db at %v", path)
 
 	s, err := New(context.Background(), path)
 	if err != nil {
@@ -61,14 +63,20 @@ func TestStorage(t *testing.T) {
 	require.Len(t, docs, 1)
 	requireDocsEqual(t, doc1, &docs[0])
 
+	time.Sleep(2 * time.Second)
+
 	doc2, err := s.Add(user1, content2, name2)
 	require.NoError(t, err)
+
+	dbDoc2, err := s.Get(doc2.ID)
+	require.NoError(t, err)
+	requireDocsEqual(t, doc2, dbDoc2)
 
 	docs, err = s.List(user1)
 	require.NoError(t, err)
 	require.Len(t, docs, 2)
-	requireDocsEqual(t, doc2, &docs[0])
-	requireDocsEqual(t, doc1, &docs[1])
+	requireDocsEqual(t, doc2, &docs[1])
+	requireDocsEqual(t, doc1, &docs[0])
 
 	doc3, err := s.Add(user2, content1, name3)
 	require.NoError(t, err)
@@ -81,6 +89,13 @@ func TestStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, docs, 1)
 	requireDocsEqual(t, doc3, &docs[0])
+
+	cutoff := dbDoc1.CreatedAt.Add(time.Second)
+	require.NoError(t, s.DeleteOld(cutoff))
+	docs, err = s.List(user1)
+	require.NoError(t, err)
+	require.Len(t, docs, 1)
+	requireDocsEqual(t, doc2, &docs[0])
 }
 
 func requireDocsEqual(t *testing.T, expected, actual *Document) {

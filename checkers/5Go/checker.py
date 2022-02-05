@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import random
+import re
 import string
 from collections import defaultdict
 
@@ -9,8 +9,6 @@ import google.protobuf.message
 import grpc
 import sys
 from checklib import *
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from client import Daeh5
 
@@ -49,7 +47,7 @@ class Checker(BaseChecker):
                 content = rnd_string(random.randint(24, 348), alphabet=string.printable)
                 name = rnd_string(random.choice((7, 8, 10, 11, 13, 14)))
                 doc = session1.add_document(user, content, name)
-                self.assert_eq(doc.id.startswith(name), True, 'Invalid document returned')
+                self.check_doc_id(doc.id, name)
                 real_doc = session1.get_document(doc.id)
                 self.assert_docs_equal(doc, real_doc)
                 created[user].append(doc)
@@ -89,7 +87,7 @@ class Checker(BaseChecker):
         name = rnd_string(10)
         with self.d.session() as session:
             doc = session.add_document(user, content, name)
-            self.assert_eq(doc.id.startswith(name), True, 'Invalid document returned')
+        self.check_doc_id(doc.id, name)
         self.cquit(Status.OK, name, f'{user}:{doc.id}')
 
     def get(self, flag_id, flag, vuln):
@@ -110,6 +108,10 @@ class Checker(BaseChecker):
             self.assert_in(flag, doc.content, 'Invalid document returned', status=Status.CORRUPT)
 
         self.cquit(Status.OK)
+
+    def check_doc_id(self, doc_id, name, st=Status.MUMBLE):
+        pattern = re.compile(rf"^{name}-[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}$")
+        self.assert_neq(pattern.match(doc_id), None, 'Invalid document ID', status=st)
 
     def assert_docs_equal(self, doc1, doc2, st=Status.MUMBLE):
         self.assert_eq(doc1.id, doc2.id, 'Invalid document returned', status=st)

@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"neuron/internal/cleaner"
 	"neuron/internal/storage"
 
 	"go.uber.org/zap"
@@ -25,6 +27,9 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Failed to create storage: %v", err)
 	}
+
+	// 30m max age
+	clean := cleaner.New(store, time.Minute, time.Minute*30)
 
 	srv := service.NewNeuronService(store)
 	s := grpc.NewServer()
@@ -44,9 +49,22 @@ func main() {
 		}
 	}()
 
+	logger.Infof("Starting old docs cleaner")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	clean.Start(ctx)
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
+
+	logger.Infof("Stopping cleaner")
+	cancel()
+	sdCtx, sdCancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer sdCancel()
+	if err := clean.Wait(sdCtx); err != nil {
+		logger.Fatalf("Error shutting waiting for cleaner: %v", err)
+	}
 
 	logger.Info("Shutting down the API")
 	s.GracefulStop()

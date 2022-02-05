@@ -1,5 +1,4 @@
-asyncio
-websockets
+websockets==10.1
 checklib
 onnx==1.8.1
 catboost==1.0.0

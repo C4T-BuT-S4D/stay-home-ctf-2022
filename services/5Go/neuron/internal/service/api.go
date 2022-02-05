@@ -25,9 +25,7 @@ const (
 )
 
 func NewNeuronService(s *storage.Storage) *NeuronService {
-	return &NeuronService{
-		storage: s,
-	}
+	return &NeuronService{storage: s}
 }
 
 type NeuronService struct {

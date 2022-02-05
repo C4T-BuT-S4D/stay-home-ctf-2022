@@ -41,11 +41,13 @@ type Storage struct {
 }
 
 func (s *Storage) Add(user, content, name string) (*Document, error) {
+	now := time.Now()
 	doc := Document{
-		ID:        fmt.Sprintf("%s-%s", name, uuid.New()),
-		User:      user,
-		Content:   content,
-		CreatedAt: time.Now(),
+		ID:            fmt.Sprintf("%s-%s", name, uuid.New()),
+		User:          user,
+		Content:       content,
+		CreatedAt:     now,
+		CreatedAtNorm: normalizeTime(now),
 	}
 	if err := s.db.Exec(`INSERT INTO documents VALUES ?`, &doc); err != nil {
 		return nil, fmt.Errorf("inserting document for user %s: %w", user, err)
@@ -54,7 +56,7 @@ func (s *Storage) Add(user, content, name string) (*Document, error) {
 }
 
 func (s *Storage) Get(id string) (*Document, error) {
-	raw, err := s.db.QueryDocument(`SELECT * FROM documents WHERE id = ? ORDER BY created_at LIMIT 1`, id)
+	raw, err := s.db.QueryDocument(`SELECT * FROM documents WHERE id = ? ORDER BY created_at_norm LIMIT 1`, id)
 	if err != nil {
 		return nil, fmt.Errorf("fetching document: %w", err)
 	}
@@ -67,7 +69,7 @@ func (s *Storage) Get(id string) (*Document, error) {
 }
 
 func (s *Storage) List(user string) ([]Document, error) {
-	q := fmt.Sprintf(`SELECT * FROM documents WHERE user = ? ORDER BY created_at LIMIT %d`, maxListSize)
+	q := fmt.Sprintf(`SELECT * FROM documents WHERE user = ? ORDER BY created_at_norm LIMIT %d`, maxListSize)
 	curs, err := s.db.Query(q, user)
 	if err != nil {
 		return nil, fmt.Errorf("fetching documents for user %s: %w", user, err)
@@ -89,6 +91,13 @@ func (s *Storage) List(user string) ([]Document, error) {
 	return docs, nil
 }
 
+func (s *Storage) DeleteOld(cutoff time.Time) error {
+	if err := s.db.Exec(`DELETE FROM documents WHERE created_at_norm < ?`, normalizeTime(cutoff)); err != nil {
+		return fmt.Errorf("executing query: %w", err)
+	}
+	return nil
+}
+
 func (s *Storage) Close() error {
 	if err := s.db.Close(); err != nil {
 		return fmt.Errorf("closing db: %w", err)
@@ -107,4 +116,8 @@ func (s *Storage) initTables() error {
 		return fmt.Errorf("creating user documents index: %w", err)
 	}
 	return nil
+}
+
+func normalizeTime(t time.Time) int64 {
+	return t.UnixNano()
 }

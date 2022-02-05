@@ -10,10 +10,11 @@ import (
 )
 
 type Document struct {
-	ID        string
-	User      string
-	Content   string
-	CreatedAt time.Time
+	ID            string    `genji:"id"`
+	User          string    `genji:"user"`
+	Content       string    `genji:"content"`
+	CreatedAt     time.Time `genji:"created_at"`
+	CreatedAtNorm int64     `genji:"created_at_norm"`
 }
 
 func (d *Document) String() string {

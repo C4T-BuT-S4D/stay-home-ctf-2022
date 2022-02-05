@@ -1,6 +1,0 @@
-#!/usr/bin/shx
-
-@module channel/config || {
-    declare -rg \
-        ChannelForwardTimeout=0.01
-}

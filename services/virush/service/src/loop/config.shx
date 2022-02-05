@@ -1,6 +1,0 @@
-#!/usr/bin/shx
-
-@module loop/config || {
-    declare -rg \
-        LoopTimeout=0.01
-}

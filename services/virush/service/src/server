@@ -1,29 +1,46 @@
 #!/usr/bin/shx
 
-@module server || {
+class server {
     @require logging
-    @require app
+    @require backend/app
+    @require backend/storage
+    @require frontend/channel
 
-    function server::exception {
-        log::error "non-zero return code"
-        std::print "ERROR"
-        std::exit 1
-    }
+    declare -rg \
+        ServerKeysDirectory="/tmp/keys_directory" \
+        ServerStorageDirectory="/tmp/storage_directory"
 
     function server::main {
-        trap "server::exception" ERR
+        logging::set_level "INFO"
 
-        log::set_level "DEBUG"
+        if [[ ! -d "${ServerKeysDirectory}" ]]; then
+            @throw "keys directory does not exist"
+        fi
 
-        log::info "starting server"
+        if [[ ! -d "${ServerStorageDirectory}" ]]; then
+            @throw "storage directory does not exist"
+        fi
+
+        logging::info "starting server"
+
+        local channel
+        channel::new "${ServerKeysDirectory}" : channel
+
+        ${channel}::establish
+
+        local storage
+        storage::new "${ServerStorageDirectory}" : storage
 
         local app
-        app::new
-        app::instance | read app
+        app::new ${storage} : app
 
-        $app::run
+        ${channel}::run ${app}::run
 
-        $app::delete
+        ${app}::delete
+        ${storage}::delete
+        ${channel}::delete
+
+        logging::info "server has stopped"
     }
 }
 

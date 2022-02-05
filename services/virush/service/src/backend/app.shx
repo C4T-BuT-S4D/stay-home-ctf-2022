@@ -1,0 +1,33 @@
+#!/usr/bin/shx
+
+class backend/app {
+    @require logging
+    @require backend/token
+    @require backend/storage
+    @require backend/handler
+
+    function app::__init__ {
+        local self.storage
+        @arguments! self.storage
+
+        token::new : self.token
+        handler::new ${self.storage} ${self.token} : self.handler
+    }
+
+    function app::__destroy__ {
+        ${self.handler}::delete
+        ${self.token}::delete
+    }
+
+    function app::run {
+        logging::info "starting app"
+
+        ${self.token}::activate
+
+        while ${self.token}::is_active; do
+            ${self.handler}::handle
+        done
+
+        logging::info "app has stopped"
+    }
+}

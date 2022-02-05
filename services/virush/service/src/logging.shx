@@ -1,0 +1,50 @@
+#!/usr/bin/shx
+
+class logging {
+    declare -Arg LoggingLevels=(
+        ["DEBUG"]=0
+        ["INFO"]=1
+        ["WARNING"]=2
+        ["ERROR"]=3
+    )
+
+    declare -g LoggingCurrentLevel=${LoggingLevels[ERROR]}
+
+    function logging::set_level {
+        local level
+        @arguments! level
+
+        if [[ ! "${LoggingLevels[${level}]:-}" ]]; then
+            @throw "invalid logging level"
+        fi
+
+        LoggingCurrentLevel=${LoggingLevels[${level}]:-${LoggingCurrentLevel}}
+    }
+
+    function logging::log {
+        local level
+        @arguments! level
+
+        if (( ${LoggingLevels[${level}]:-999} >= ${LoggingCurrentLevel:-0} )); then
+            local date
+            date --utc +'%F %T,%N' | read -r date
+            printf '/%6s/ [%s] %5s: %s\n' "$$" "${date}" "${level}" "${*:2}" >&2
+        fi
+    }
+
+    function logging::error {
+        logging::log "ERROR" "$*"
+    }
+
+    function logging::warning {
+        logging::log "WARNING" "$*"
+    }
+
+    function logging::info {
+        logging::log "INFO" "$*"
+    }
+
+    function logging::debug {
+        logging::log "DEBUG" "$*"
+    }
+}

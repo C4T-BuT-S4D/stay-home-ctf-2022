@@ -1,0 +1,596 @@
+#!/bin/bash
+
+if [[ ! "$1" ]]; then
+    echo "Usage: $0 <script.shx>"
+    exit 0
+fi
+
+
+declare __SHX=$0
+
+set \
+    -o errexit \
+    -o errtrace \
+    -o noglob \
+    -o nounset \
+    -o pipefail
+
+shopt -s \
+    lastpipe \
+    expand_aliases
+
+trap 'exit 0' SIGUSR1
+trap '__SHX_CATCH $?' ERR
+
+declare -a __SHX_QUEUE=()
+declare -i __SHX_QUEUE_LOCK=0
+
+declare -A __SHX_CACHE=()
+declare -A __SHX_SOURCES=()
+declare -A __SHX_ALIASES=()
+
+declare -A __SHX_CLASSES=()
+declare -A __SHX_FUNCTIONS=()
+declare -A __SHX_VARIABLES=()
+declare -A __SHX_INSTANCES=()
+declare -a __SHX_INSTANCES_QUEUE=()
+declare -i __SHX_INSTANCES_QUEUE_LOCK=0
+
+alias __SHX_EXIT='kill -SIGUSR1 0 && return'
+
+__SHX_LOG() {
+    local source=${1:-}
+    local location=${2:-}
+    local message=${3:-}
+
+    local prefix
+
+    if [[ "${location:-}" ]]; then
+        location=${__SHX_ALIASES[${location:-}]:-${location:-}}
+        source=${__SHX_SOURCES[${location:-}]:-${source:-}}
+    fi
+
+    source=${__SHX_ALIASES[${source:-shx}]:-${source:-}}
+
+    if [[ "${source:-}" =~ "(__SHX_)" || "${source:-}" == "source" ]]; then
+        source=""
+        location=""
+    fi
+
+    if [[ "${source:-}" && "${location:-}" ]]; then
+        prefix="shx > ${source} > ${location}"
+    elif [[ "${source:-}" || "${location:-}" ]]; then
+        prefix="shx > ${source:-${location}}"
+    else
+        prefix="shx"
+    fi
+
+    echo "[ ${prefix} ] ${message:-}" >&2
+}
+
+__SHX_CATCH() {
+    local code=$1
+    local source=${BASH_SOURCE[1]:-}
+    local location=${BASH_LINENO[0]:-}
+
+    if [[ "${source:-}" == "${__SHX}" ]]; then
+        source=${FUNCNAME[1]:-}
+        location=""
+    fi
+
+    __SHX_LOG "${source:-}" "${location:-}" "Error: non-zero return code ${code:-}"
+    __SHX_EXIT ${code:-}
+}
+
+command_not_found_handle() {
+    local command=$@
+    local source=${BASH_SOURCE[1]:-}
+    local location=${BASH_LINENO[0]:-}
+
+    if [[ "${source:-}" == "${__SHX}" ]]; then
+        source=${FUNCNAME[1]:-}
+        location=""
+    fi
+
+    __SHX_LOG "${source:-}" "${location:-}" "Error: unknown command '${command:-}'"
+    __SHX_EXIT 127
+}
+
+quote() 
+{ 
+    local quoted=${1//\'/\'\\\'\'}
+    printf "'%s'\n" "${quoted}"
+}
+
+alias __SHX_CLASS_X="__SHX_CLASS_0()"
+
+__SHX_NEW_CLASS() {
+    local source=${BASH_SOURCE[1]:-}
+    local lineno=${BASH_LINENO[0]:-}
+
+    local index=${#__SHX_QUEUE[@]}
+    local function=__SHX_CLASS_${index}
+    local location="${source:-} : ${lineno:-}"
+
+    local caller=${FUNCNAME[1]:-}
+
+    if [[ "${caller:-}" != "main" && "${caller:-}" != "source" ]]; then
+        __SHX_LOG "${source}" "${lineno}" "Error: class should be declared at the top level"
+        __SHX_EXIT 1
+    fi
+
+    if [[ "${__SHX_CACHE[${location}]:-}" ]]; then
+        return 1
+    fi
+
+    __SHX_CACHE[${location}]=${function}
+    __SHX_QUEUE[${#__SHX_QUEUE[@]}]=${function}
+
+    alias __SHX_CLASS_X="__SHX_CLASS_${#__SHX_QUEUE[@]}()"
+}
+
+__SHX_SET_CLASS_NAME() {
+    local source=${BASH_SOURCE[1]:-}
+    local lineno=${BASH_LINENO[0]:-}
+
+    local name=${1:-}
+    local trailing=${2:-}
+    local function=${FUNCNAME[1]:-}
+    local location="${source:-} : ${lineno:-}"
+
+    if [[ ! "${name:-}" ]]; then
+        __SHX_LOG "${source}" "${lineno}" "Error: class name is required"
+        __SHX_EXIT 1
+    fi
+
+    if [[ ! "${trailing::1}" ]]; then
+        __SHX_LOG "${source}" "${lineno}" "Error: class body is required"
+        __SHX_EXIT 1
+    fi
+
+    if [[ "${__SHX_CLASSES[${name}]:-}" ]]; then
+        __SHX_LOG "${source}" "${lineno}" "Error: class '${name}' already exists at [ ${__SHX_CLASSES[${name}]} ]"
+        __SHX_EXIT 1
+    fi
+
+    __SHX_CLASSES[${name}]=${location}
+    __SHX_ALIASES[${function}]=${name}
+    __SHX_SOURCES[${name}]=${source}
+}
+
+alias class='__SHX_NEW_CLASS && __SHX_CLASS_X { __SHX_SET_CLASS_NAME'
+
+__SHX_LOAD_CLASS() {
+    local source=${BASH_SOURCE[1]:-}
+
+    local fullname=$1
+
+    local name
+    basename -- "${fullname}" | read name
+
+    if declare -F "${name}::new" >/dev/null; then
+        return 0
+    fi
+
+    eval "function ${name}::new { __SHX_NEW_INSTANCE ${name} \"\$@\"; }"
+
+    __SHX_INSTANCES[${name}]=0
+
+    local -a functions
+
+    declare -F \
+        | grep -P "${name}::(?!new$)" \
+        | cut -d ' ' -f 3 \
+        | cut -d ':' -f 3 \
+        | mapfile -t functions \
+        || true
+
+    local -A unique_variables=()
+
+    if (( ${#functions[@]} > 0 )); then
+        __SHX_FUNCTIONS[${name}]=${functions[@]}
+
+        local function
+        for function in ${functions[@]}; do
+            local word='[a-zA-Z0-9_]'
+
+            local -a variables
+            declare -f "${name}::${function}" \
+                | grep -o "\bself\.${word}*\b" \
+                | sed -e "s/self\.\(${word}*\)/\1/g" \
+                | mapfile variables \
+                || true
+
+            if (( ${#variables[@]} > 0 )); then
+                local variable
+
+                for variable in ${variables[@]}; do
+                    unique_variables[${variable}]=x
+                done
+            fi
+
+            __SHX_SOURCES["${name}::${function}"]=${__SHX_SOURCES[${fullname}]:-}
+        done
+    fi
+
+    if (( ${#unique_variables[@]} > 0 )); then
+        __SHX_VARIABLES[${name}]=${!unique_variables[@]}
+    fi
+}
+
+__SHX_CHECK_SYNTAX() {
+    local filename=$1
+    local -a errors
+    local tmpfile
+
+    mktemp -q | read tmpfile
+
+    ( echo -n "set -o noexec; "; cat -- "${filename}" ) > "${tmpfile}"
+
+    ( alias -p; echo "shopt -s expand_aliases && source '${tmpfile}'" ) | bash 2>&1 \
+        | cut -d ' ' -f 3- \
+        | mapfile -t errors \
+        || true
+
+    rm -f -- "${tmpfile}"
+
+    if (( ${#errors[@]} == 0 )); then
+        return 0
+    fi
+
+    local i
+
+    for (( i=0; i<${#errors[@]}; i++ )); do
+        local line
+        local text
+
+        echo ${errors[${i}]} | read line text
+        line=${line::-1}
+
+        __SHX_LOG "$1" "${line}" "Error: ${text}"
+        __SHX_EXIT 1
+    done
+}
+
+__SHX_LOAD_FILE() {
+    __SHX_CHECK_SYNTAX "$1"
+
+    source -- "$1"
+
+    if (( __SHX_QUEUE_LOCK != 0 )); then
+        return 0
+    fi
+
+    __SHX_QUEUE_LOCK=1
+
+    local -i __SHX_QUEUE_INDEX=0
+
+    while [[ "${__SHX_QUEUE[${__SHX_QUEUE_INDEX}]:-}" ]]; do
+        local __SHX_LOCAL_FUNCTION=${__SHX_QUEUE[${__SHX_QUEUE_INDEX}]:-}
+
+        if [[ "${__SHX_LOCAL_FUNCTION:-}" ]]; then
+            ${__SHX_LOCAL_FUNCTION}
+            __SHX_LOAD_CLASS ${__SHX_ALIASES[${__SHX_LOCAL_FUNCTION}]:-}
+        fi
+
+        (( __SHX_QUEUE_INDEX += 1))
+    done
+
+    __SHX_QUEUE_LOCK=0
+    __SHX_QUEUE=()
+}
+
+__SHX_NEW_INSTANCE() {
+    local source=${BASH_SOURCE[1]:-}
+
+    local class_name=$1
+    shift 1
+
+    local arguments
+    local outer_variable
+    if (( ${#@} >= 2 )) && [[ "${@: -2:1}" == ":" ]]; then
+        arguments="${@:1:${#@}-2}"
+        outer_variable="${@: -1}"
+    else
+        arguments="${@}"
+    fi
+
+    local instance_name=__SHX_INSTANCE_${class_name}_${__SHX_INSTANCES[${class_name}]}
+
+    local word='[a-zA-Z0-9_]'
+
+    if [[ "${__SHX_FUNCTIONS[${class_name}]:-}" ]]; then
+        local function
+
+        for function in ${__SHX_FUNCTIONS[${class_name}]}; do
+            local -a declaration
+            declare -f "${class_name}::${function}" | mapfile declaration
+
+            __SHX_ALIASES["${instance_name}::${function}"]="${class_name}::${function}"
+
+            local -a instance_declaration
+            echo "${declaration[@]}" \
+                | sed \
+                    -e "s/\b${class_name}::${function}\b/${instance_name}::${function}/g" \
+                    -e "s/\bself\.\(${word}*\)\b/${instance_name}__\1/g" \
+                    -e "s/\bself::\(${word}*\)\b/${instance_name}::\1/g" \
+                | mapfile -d '' instance_declaration
+
+
+            eval "${instance_declaration}"
+        done
+    fi
+
+    if (( ${#__SHX_VARIABLES[${class_name}]} > 0 )); then
+        local variable
+        for variable in ${__SHX_VARIABLES[${class_name}]}; do
+            local access_function="${instance_name}::~${variable}"
+
+            if ! declare -F "${access_function}" >/dev/null; then
+                eval "function ${access_function} { __SHX_ACCESS_VARIABLE ${instance_name} ${variable} \"\${1:-}\"; }"
+            fi
+        done
+    fi
+
+    if declare -F "${instance_name}::__init__" >/dev/null; then
+        ${instance_name}::__init__ ${arguments}
+    fi
+
+    eval "function ${instance_name}::delete { __SHX_DELETE_INSTANCE ${instance_name} \"\$@\"; }"
+
+    if [[ "${outer_variable:-}" ]]; then
+        eval "${outer_variable}=${instance_name}"
+    fi
+
+    (( __SHX_INSTANCES[${class_name}] += 1 ))
+
+    __SHX_INSTANCES_QUEUE[${#__SHX_INSTANCES_QUEUE[@]}]=${instance_name}
+}
+
+__SHX_ACCESS_VARIABLE() {
+    local instance_name=$1
+    local variable_name=$2
+    local variable=${instance_name}__${variable_name}
+    local value=${3:-}
+
+    if [[ "${value:-}" ]]; then
+        local quoted
+        quote "${value}" | read -r quoted
+        eval "${variable}=${quoted}"
+    else
+        echo "${!variable}"
+    fi
+}
+
+__SHX_DELETE_INSTANCE() {
+    local instance_name=$1
+    local arguments=${@:2}
+
+    if declare -F "${instance_name}::__destroy__" >/dev/null; then
+        ${instance_name}::__destroy__ ${arguments}
+    fi
+
+    local function
+    local -a functions
+
+    declare -F \
+        | grep "${instance_name}" \
+        | cut -d ' ' -f 3 \
+        | mapfile -t functions
+
+    for function in ${functions[@]}; do
+        unset -f ${function}
+        unset __SHX_ALIASES["${function}"]
+    done
+
+    unset -f "${instance_name}::delete"
+
+    local field
+    local -a fields
+
+    declare \
+        | grep "^${instance_name}__" \
+        | cut -d '=' -f 1 \
+        | mapfile -t fields \
+        || true
+
+    if (( ${#fields[@]} > 0 )); then
+        for field in ${fields[@]}; do
+            unset ${field}
+        done
+    fi
+
+    unset ${instance_name}
+}
+
+__SHX_DESTROY_INSTANCES() {
+    if (( __SHX_INSTANCES_QUEUE_LOCK == 1 )); then
+        return 0
+    fi
+
+    __SHX_INSTANCES_QUEUE_LOCK=1
+
+    local index
+    for (( index = ${#__SHX_INSTANCES_QUEUE[@]} - 1; index >= 0; index-- )); do
+        local instance_name=${__SHX_INSTANCES_QUEUE[${index}]}
+
+        if declare -F "${instance_name}::delete" >/dev/null; then
+            "${instance_name}::delete"
+        fi
+    done
+
+    __SHX_INSTANCES_QUEUE=()
+    __SHX_INSTANCES_QUEUE_LOCK=0
+}
+
+__SHX_THROW() {
+    local text=${1:-}
+
+    local source
+    local location
+
+    if [[ "${FUNCNAME[1]:-}" =~ "__SHX_INSTANCE_" ]]; then
+        location=${FUNCNAME[1]}
+        source=${__SHX_SOURCES[${location}]:-}
+    else
+        location=${BASH_LINENO[0]:-}
+        source=${FUNCNAME[1]:-}
+    fi
+
+    __SHX_LOG "${source:-}" "${location:-}" "Exception: ${text}"
+    __SHX_EXIT 1
+}
+
+__SHX_SET_ENTRYPOINT() {
+    local source=${BASH_SOURCE[1]:-}
+    local lineno=${BASH_LINENO[0]:-}
+
+    local entrypoint=${1:-}
+
+    if [[ "${__SHX_ENTRYPOINT:-}" ]]; then
+        __SHX_LOG "${source:-}" "${lineno:-}" "Error: entrypoint is already defined"
+        __SHX_EXIT 1
+    fi
+
+    if [[ ! "${entrypoint:-}" ]]; then
+        __SHX_LOG "${source:-}" "${lineno:-}" "Error: entrypoint is empty"
+        __SHX_EXIT 1
+    fi
+
+    __SHX_ENTRYPOINT=${entrypoint}
+}
+
+__SHX_SET_ARGUMENTS() {
+    local -i flag=0
+    local -a arguments=()
+    local -i arguments_size=0
+    local -a variables=()
+    local -i variables_size=0
+
+    local argument
+    for argument in "${@:2}"; do
+        if [[ "${argument:-}" == "__SHX_EOARG" ]]; then
+            flag=1
+            continue
+        fi
+
+        if (( flag == 0 )); then
+            arguments[${arguments_size}]="${argument:-}"
+            (( arguments_size += 1))
+        else
+            variables[${variables_size}]="${argument:-}"
+            (( variables_size += 1))
+        fi
+    done
+
+    if (( arguments_size < variables_size )); then
+        __SHX_LOG "${FUNCNAME[1]}" "" "Error: no enough arguments"
+        __SHX_EXIT 1
+    fi
+
+    local index
+    for (( index=0; index < variables_size; index++ )); do
+        if [[ "${0:-}" == "STRICT" && "${arguments[${index}]:-}" == "" ]]; then
+            __SHX_LOG "${FUNCNAME[1]}" "" "Error: argument for ${variables[${index}]} is empty"
+            __SHX_EXIT 1
+        fi
+
+        local variable=${variables[${index}]}
+        local argument=${arguments[${index}]:-}
+        local value
+
+        if [[ "${variable::1}" == "*" ]]; then
+            quote "${!argument:-}" | read -r value
+            eval "${variable:1}=${value}"
+        else
+            quote "${argument:-}" | read -r value
+            eval "${variable}=${value}"
+        fi
+    done
+}
+
+__SHX_LOAD_MODULE() {
+    local source=${BASH_SOURCE[1]:-${__SHX}}
+    local lineno=${BASH_LINENO[0]:-}
+
+    local name=${1:-}
+
+    if [[ ! "${name:-}" ]]; then
+        __SHX_LOG "${source}" "${lineno}" "Error: empty module name"
+        __SHX_EXIT 1
+    fi
+
+    if [[ "${__SHX_CACHE[${name/.shx/}]:-}" ]]; then
+        return
+    fi
+
+    __SHX_CACHE[${name/.shx/}]="${source}/${lineno}"
+
+    local fullname
+
+    if [[ -f "${name}" && -r "${name}" ]]; then
+        fullname="${name}"
+    elif [[ -f "${name}.shx" && -r "${name}.shx" ]]; then
+        fullname="${name}.shx"
+    elif [[ -d "${name}" ]]; then
+        local file
+
+        basename -- "${name}" | read file
+
+        if [[ -f "${name}/${file}" && -r "${name}/${file}" ]]; then
+            fullname="${name}/${file}"
+        elif [[ -f "${name}/${file}.shx" && -r "${name}/${file}.shx" ]]; then
+            fullname="${name}/${file}.shx"
+        fi
+    fi
+
+    if [[ ! "${fullname:-}" ]]; then
+        __SHX_LOG "${source}" "${lineno}" "Error: no such module '${name}'"
+        __SHX_EXIT 1
+    fi
+
+    __SHX_LOAD_FILE "${fullname}"
+}
+
+__SHX_RUN() {
+    local __SHX_PATH=${1:-}
+    local __SHX_DIRECTORY
+    local __SHX_FILENAME
+
+    if [[ ! -r "${__SHX_PATH:-}" ]]; then
+        __SHX_LOG "" "" "Error: no such file '${__SHX_PATH}'"
+        __SHX_EXIT 1
+    fi
+
+    dirname -- "${__SHX_PATH}" | read __SHX_DIRECTORY
+    basename -- "${__SHX_PATH}" | read __SHX_FILENAME
+    shift 1
+
+    __SHX_CACHE[${__SHX_FILENAME/.shx/}]=${__SHX_FILENAME}
+
+    cd -- "${__SHX_DIRECTORY}"
+    __SHX_LOAD_FILE "${__SHX_FILENAME}"
+
+    if [[ ! "${__SHX_ENTRYPOINT:-}" ]]; then
+        __SHX_LOG "" "" "Error: entrypoint is not defined"
+        __SHX_EXIT 1
+    fi
+
+    if ! declare -F "${__SHX_ENTRYPOINT}" >/dev/null; then
+        __SHX_LOG "" "" "Error: invalid entrypoint '${__SHX_ENTRYPOINT}'"
+        __SHX_EXIT 1
+    fi
+
+    ${__SHX_ENTRYPOINT}
+    __SHX_DESTROY_INSTANCES
+    __SHX_EXIT 0
+}
+
+alias @require='__SHX_LOAD_MODULE'
+alias @arguments='__SHX_SET_ARGUMENTS NONSTRICT "$@" __SHX_EOARG'
+alias @arguments!='__SHX_SET_ARGUMENTS STRICT "$@" __SHX_EOARG'
+alias @throw='__SHX_THROW'
+alias @entrypoint='__SHX_SET_ENTRYPOINT'
+
+
+__SHX_RUN "$@"

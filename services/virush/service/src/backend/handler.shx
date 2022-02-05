@@ -1,0 +1,252 @@
+#!/usr/bin/shx
+
+class backend/handler {
+    @require logging
+    @require crypto/utils
+    @require crypto/cipher
+    @require backend/token
+    @require backend/storage
+
+    function handler::__init__ {
+        @arguments! self.storage self.token
+
+        declare -g self.username=""
+        declare -g self.password=""
+    }
+
+    function handler::handle {
+        local action
+
+        read action
+
+        case "${action:-}" in
+            "REGISTER")
+                logging::debug "executing REGISTER command"
+                self::handle_register
+                ;;
+            "LOGIN")
+                logging::debug "executing LOGIN command"
+                self::handle_login
+                ;;
+            "LOGOUT")
+                logging::debug "executing LOGOUT command"
+                self::handle_logout
+                ;;
+            "GET")
+                logging::debug "executing GET command"
+                self::handle_get
+                ;;
+            "PUT")
+                logging::debug "executing PUT command"
+                self::handle_put
+                ;;
+            "EXIT")
+                logging::debug "executing EXIT command"
+                self::handle_exit
+                ;;
+            *)
+                echo "ERROR: INVALID COMMAND"
+                ;;
+        esac
+    }
+
+    function handler::is_logged_in {
+        [[ "${self.username:-}" != "" && "${self.password:-}" != "" ]]
+    }
+
+    function handler::handle_register {
+        if self::is_logged_in; then
+            echo "ERROR: YOU HAVE ALREADY LOGGED IN AS ${self.username}"
+            return 0
+        fi
+
+        local name
+        local password
+        read name password
+
+        if [[ "${name:-}" == "" || "${password:-}" == "" ]]; then
+            echo "ERROR: NOT ENOUGH ARGUMENTS"
+            return 0
+        fi
+
+        if ${self.storage}::has_entity "${name}"; then
+            echo "ERROR: USER ${name} IS ALREADY REGISTERED"
+            return 0
+        fi
+
+        local password_hash
+        echo -n ${password} \
+            | utils::sha256sum \
+            | read password_hash
+
+        ${self.storage}::create_entity "${name}" "${password_hash}"
+
+        echo "SUCCESS: USER ${name} HAS BEEN REGISTERED"
+    }
+
+    function handler::handle_login {
+        if self::is_logged_in; then
+            echo "ERROR: YOU HAVE ALREADY LOGGED IN AS ${self.username}"
+            return 0
+        fi
+
+        local name
+        local password
+        read name password
+
+        if [[ "${name:-}" == "" || "${password:-}" == "" ]]; then
+            echo "ERROR: NOT ENOUGH ARGUMENTS"
+            return 0
+        fi
+
+        if ! ${self.storage}::has_entity "${name}"; then
+            echo "ERROR: USER ${name} DOES NOT EXIST"
+            return 0
+        fi
+
+        local input_password_hash
+        echo -n ${password} \
+            | utils::sha256sum \
+            | read input_password_hash
+
+        local expected_password_hash
+        ${self.storage}::get_password_hash "${name}" \
+            | read expected_password_hash
+
+        if [[ "${input_password_hash}" != "${expected_password_hash}" ]]; then
+            echo "ERROR: INVALID PASSWORD FOR USER ${name}"
+            return 0
+        fi
+
+        self.username=${name}
+        self.password=${password}
+
+        echo "SUCCESS: LOGGED IN AS ${name}"
+    }
+
+    function handler::handle_logout {
+        if ! self::is_logged_in; then
+            echo "ERROR: YOU HAVE NOT LOGGED IN"
+            return 0
+        fi
+
+        self.username=""
+        self.password=""
+
+        echo "SUCCESS: LOGGED OUT"
+    }
+
+    function handler::handle_get {
+        local username property_name mode
+        read username property_name mode
+
+        if [[ "${username:-}" == "" || "${property_name:-}" == "" ]]; then
+            echo "ERROR: NOT ENOUGH ARGUMENTS"
+            return 0
+        fi
+
+        if [[ "${mode:-}" == "" || "${mode:-}" == "PLAIN" ]]; then
+            mode="PLAIN"
+        elif [[ "${mode:-}" == "ENCRYPTED" ]]; then
+            if ! self::is_logged_in; then
+                echo "ERROR: YOU NEED TO LOGIN FIRST"
+                return 0
+            else
+                mode="ENCRYPTED"
+            fi
+        else
+            echo "ERROR: INVALID MODE"
+            return 0
+        fi
+
+        if ! ${self.storage}::has_entity "${username}"; then
+            echo "ERROR: USER ${username} DOES NOT EXIST"
+            return 0
+        fi
+
+        if ! ${self.storage}::has_attribute "${username}" "${property_name}"; then
+            echo "ERROR: ${property_name} DOES NOT EXIST FOR USER ${username}"
+            return 0
+        fi
+
+        echo "SUCCESS: TRYING TO GET ${property_name} FROM USER ${username}"
+
+        case "${mode}" in
+            "PLAIN")
+                ${self.storage}::read_attribute "${username}" "${property_name}"
+                ;;
+            "ENCRYPTED")
+                ${self.storage}::read_attribute "${username}" "${property_name}" \
+                    | utils::hexdecode \
+                    | cipher::decrypt "${self.password}" \
+                    || echo "ERROR: FAILED TO DECRYPT"
+                ;;
+            *)
+                echo "ERROR: INVALID MODE"
+                ;;
+        esac
+    }
+
+    function handler::handle_put {
+        if ! self::is_logged_in; then
+            echo "ERROR: YOU NEED TO LOGIN FIRST"
+            return 0
+        fi
+
+        local username property_name mode
+        read username property_name mode
+
+        if [[ "${username:-}" == "" || "${property_name:-}" == "" ]]; then
+            echo "ERROR: NOT ENOUGH ARGUMENTS"
+            return 0
+        fi
+
+        if [[ "${mode:-}" == "" || "${mode:-}" == "PLAIN" ]]; then
+            mode="PLAIN"
+        elif [[ "${mode:-}" == "ENCRYPTED" ]]; then
+            mode="ENCRYPTED"
+        else
+            echo "ERROR: INVALID MODE"
+            return 0
+        fi
+
+        if [[ "${username}" != "${self.username}" ]]; then
+            echo "ERROR: YOU ARE NOT ${username}"
+            return 0
+        fi
+
+        if ! ${self.storage}::has_entity "${username}"; then
+            echo "ERROR: USER ${username} DOES NOT EXIST"
+            return 0
+        fi
+
+        if ${self.storage}::has_attribute "${username}" "${property_name}"; then
+            echo "ERROR: ${property_name} ALREADY EXISTS FOR USER ${username}"
+            return 0
+        fi
+
+        echo "SUCCESS: TRYING TO PUT ${property_name} TO USER ${username}"
+
+        case "${mode}" in
+            "PLAIN")
+                ${self.storage}::write_attribute "${username}" "${property_name}"
+                ;;
+            "ENCRYPTED")
+                utils::readline \
+                    | cipher::encrypt "${self.password}" \
+                    | utils::hexencode \
+                    | ${self.storage}::write_attribute "${username}" "${property_name}" \
+                    || echo "ERROR: FAILED TO ENCRYPT"
+                ;;
+            *)
+                echo "ERROR: INVALID MODE"
+                ;;
+        esac
+    }
+
+    function handler::handle_exit {
+        echo "SUCCESS: BYE"
+
+        ${self.token}::deactivate
+    }
+}

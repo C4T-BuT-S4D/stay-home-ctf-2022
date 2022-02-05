@@ -1,0 +1,45 @@
+#!/usr/bin/shx
+
+class loop {
+    @require logging
+
+    declare -rg \
+        LoopTimeout=0.05
+
+    function loop::__init__ {
+        declare -ag self.functions=
+    }
+
+    function loop::add_function {
+        local function
+        @arguments! function
+
+        if ! declare -F "${function}" >/dev/null; then
+            @throw "invalid function"
+        fi
+
+        local functions_size=${#self.functions[@]}
+
+        self.functions[${functions_size}]=${function}
+
+        logging::debug "added function to loop"
+    }
+
+    function loop::run {
+        local continue_condition
+        @arguments! continue_condition
+
+        logging::info "starting loop"
+
+        while ${continue_condition}; do
+            local i
+
+            for (( i=0; i<${#self.functions[@]}; i++)); do
+                ${self.functions[${i}]}
+                sleep ${LoopTimeout}
+            done
+        done
+
+        logging::info "loop has stopped"
+    }
+}

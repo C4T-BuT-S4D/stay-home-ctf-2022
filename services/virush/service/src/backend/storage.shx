@@ -1,0 +1,107 @@
+#!/usr/bin/shx
+
+class backend/storage {
+    @require logging
+
+    declare -rg \
+        StorageDataLength=1024
+
+    function storage::__init__ {
+        @arguments! self.directory
+
+        if [[ ! -d "${self.directory}" ]]; then
+            @throw "directory ${self.directory} does not exist"
+        fi
+
+        logging::info "storage has initialized in ${self.directory}"
+    }
+
+    function storage::has_entity {
+        local entity_name
+        @arguments! entity_name
+
+        local entity_dir=${self.directory}/${entity_name}
+
+        test -d ${entity_dir} 2>/dev/null
+    }
+
+    function storage::create_entity {
+        local entity_name
+        local password_hash
+        @arguments! entity_name password_hash
+
+        if self::has_entity "${entity_name}"; then
+            @throw "entity ${entity_name} already exists"
+        fi
+
+        local entity_dir=${self.directory}/${entity_name}
+        local hash_path=${entity_dir}/.hash
+
+        mkdir -p ${entity_dir}
+
+        if [[ ! -d "${entity_dir}" ]]; then
+            @throw "failed to create directory ${entity_dir}"
+        fi
+
+        echo ${password_hash} > ${hash_path}
+    }
+
+    function storage::get_password_hash {
+        local entity_name
+        @arguments! entity_name
+
+        if ! self::has_entity "${entity_name}"; then
+            @throw "no such entity ${entity_name}"
+        fi
+
+        local hash_path=${self.directory}/${entity_name}/.hash
+
+        if [[ ! -r "${hash_path}" ]]; then
+            @throw "no password hash for entity ${entity_name}"
+        fi
+
+        cat ${hash_path}
+    }
+
+    function storage::has_attribute {
+        local entity_name
+        local attribute_name
+        @arguments! entity_name attribute_name
+
+        if ! self::has_entity "${entity_name}"; then
+            @throw "no such entity ${entity_name}"
+        fi
+
+        local attribute_path=${self.directory}/${entity_name}/${attribute_name}
+
+        test -r ${attribute_path} 2>/dev/null
+    }
+
+    function storage::read_attribute {
+        local entity_name
+        local attribute_name
+        @arguments! entity_name attribute_name
+
+        if ! self::has_attribute "${entity_name}" "${attribute_name}"; then
+            @throw "no such attribute ${attribute_name} for entity ${entity_name}"
+        fi
+
+        local attribute_path=${self.directory}/${entity_name}/${attribute_name}
+
+        dd bs=${StorageDataLength} count=1 if=${attribute_path} status=none 2>/dev/null
+    }
+
+    function storage::write_attribute {
+        local entity_name
+        local attribute_name
+        @arguments! entity_name attribute_name
+
+        if self::has_attribute "${entity_name}" "${attribute_name}"; then
+            @throw "attribute ${attribute_name} for entity ${entity_name} already exists"
+        fi
+
+        local attribute_path=${self.directory}/${entity_name}/${attribute_name}
+
+        dd bs=${StorageDataLength} count=1 of=${attribute_path} status=none 2>/dev/null
+    }
+}

@@ -1,0 +1,36 @@
+version: '2.4'
+
+services:
+  virush:
+    container_name: virush  
+    build: service
+    cpus: 2
+    pids_limit: 65536
+    mem_limit: 512m
+    restart: unless-stopped
+    stop_grace_period: 3s
+    volumes:
+      - "keys:/tmp/keys_directory"
+      - "storage:/tmp/storage_directory"
+
+  nginx:
+    container_name: virush_nginx
+    image: nginx:latest
+    cpus: 1
+    pids_limit: 256
+    mem_limit: 256M
+    restart: unless-stopped
+    stop_grace_period: 3s
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/var/www:ro
+    ports:
+      - "17171:80"
+    depends_on:
+      - virush
+
+  # TODO: add cleaner
+
+volumes:
+  keys:
+  storage:

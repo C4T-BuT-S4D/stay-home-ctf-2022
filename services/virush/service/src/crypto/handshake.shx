@@ -1,55 +1,58 @@
 #!/usr/bin/shx
 
-@module crypto/handshake || {
+class crypto/handshake {
     @require logging
-    @require crypto/config
     @require crypto/utils
+    @require crypto/cipher
 
-    @class handshake
+    declare -rg \
+        HandshakeKeyfileMask="XXXXXXXXXXXXXXXX.key" \
+        HandshakeDhParamFile="crypto/dhparam.pem"
+
+    if [[ ! -r "${HandshakeDhParamFile}" ]]; then
+        @throw "dh.param file ${HandshakeDhParamFile} does not exist"
+    fi
 
     function handshake::__init__ {
-        log::enter_function
+        local keys_directory
+        @arguments! keys_directory
 
-        log::info "starting handshake"
+        if [[ ! -d "${keys_directory}" ]]; then
+            @throw "keys directory ${keys_directory} does not exist"
+        fi
 
-        mktemp -p $CryptoKeysPath $CryptoKeyFileMask | read __key_path
-        openssl genpkey -paramfile $CryptoDhParam -out $__key_path 2>$DEVNULL
+        mktemp -p ${keys_directory} ${HandshakeKeyfileMask} \
+            | read self.key_path
 
-        log::exit_function
+        openssl genpkey -paramfile ${HandshakeDhParamFile} -out ${self.key_path} 2>/dev/null \
+            || @throw "failed to generate private key"
+
+        logging::debug "successfully generated private key"
     }
 
     function handshake::__destroy__ {
-        log::enter_function
+        rm -f ${self.key_path}
 
-        log::info "destroying handshake"
-
-        rm -f $__key_path
-
-        log::exit_function
+        logging::debug "successfully deleted private key"
     }
 
     function handshake::get_public_key {
-        log::enter_function
+        openssl pkey -in ${self.key_path} -pubout -outform DER 2>/dev/null \
+            || @throw "failed to get public key"
 
-        openssl pkey -in $__key_path -pubout -outform DER 2>$DEVNULL
-
-        log::exit_function
+        logging::debug "successfully generated public key"
     }
 
     function handshake::derive_shared_key {
-        log::enter_function
-
         local shared_key
 
-        openssl pkeyutl -derive -inkey $__key_path -peerkey - -peerform DER 2>$DEVNULL \
-            | sha256sum \
-            | ( dd bs=$CryptoKeySize count=1 status=none; std::print ) \
-            | read shared_key
+        openssl pkeyutl -derive -inkey ${self.key_path} -peerkey - -peerform DER 2>/dev/null \
+            | utils::sha256sum \
+            | read shared_key \
+            || @throw "failed to generate shared key"
 
-        log::info "successfully generated shared key"
+        logging::debug "successfully generated shared key"
 
-        std::print $shared_key
-
-        log::exit_function
+        echo ${shared_key}
     }
 }

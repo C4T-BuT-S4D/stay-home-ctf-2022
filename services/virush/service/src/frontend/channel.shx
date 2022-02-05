@@ -1,0 +1,115 @@
+#!/usr/bin/shx
+
+class frontend/channel {
+    @require logging
+    @require frontend/pipe
+    @require frontend/loop
+    @require crypto/utils
+    @require crypto/cipher
+    @require crypto/handshake
+
+    declare -rg \
+        ChannelReadTimeout=0.5
+
+    function channel::__init__ {
+        @arguments! self.keys_directory
+
+        declare -ig self.pipe_in=0
+        declare -ig self.pipe_out=0
+
+        while (( self.pipe_in == self.pipe_out )); do
+            (( self.pipe_in = 100 + (${RANDOM} % 100) ))
+            (( self.pipe_out = 100 + (${RANDOM} % 100) ))
+        done
+
+        pipe::open "${self.pipe_in:-}"
+        pipe::open "${self.pipe_out:-}"
+
+        declare -g self.shared_key
+        declare -g self.task_id
+    }
+
+    function channel::__destroy__ {
+        pipe::close "${self.pipe_out}"
+        pipe::close "${self.pipe_in}"
+    }
+
+    function channel::establish {
+        logging::info "trying to establish connection"
+
+        local hs
+        handshake::new "${self.keys_directory}" : hs
+
+        local server_public_key
+        ${hs}::get_public_key \
+            | utils::b64encode \
+            | read server_public_key
+
+        echo ${server_public_key}
+
+        utils::readline \
+            | utils::b64decode \
+            | ${hs}::derive_shared_key \
+            | read self.shared_key
+
+        ${hs}::delete
+
+        logging::info "channel connection is established"
+    }
+
+    function channel::run {
+        local function
+        @arguments! function
+
+        if ! declare -F "${function}" >/dev/null; then
+            @throw "invalid function"
+        fi
+
+        local loop
+        loop::new : loop
+
+        ${loop}::add_function self::forward_input
+        ${loop}::add_function self::forward_output
+
+        logging::debug "starting function in background"
+
+        ${function} <&${self.pipe_in} >&${self.pipe_out} &
+        self.task_id=$!
+
+        logging::debug "starting channel communication"
+
+        ${loop}::run self::is_task_working
+
+        logging::debug "finished channel communication"
+
+        ${loop}::delete
+    }
+
+    function channel::forward_input {
+        local data
+
+        read -t ${ChannelReadTimeout} -u 0 data \
+            || return 0
+
+        echo ${data} \
+            | utils::b64decode \
+            | cipher::decrypt "${self.shared_key}" \
+            | utils::readline >&${self.pipe_in}
+    }
+
+    function channel::forward_output {
+        local data
+
+        read -t ${ChannelReadTimeout} -u ${self.pipe_out} data \
+            || return 0
+
+        echo ${data} \
+            | cipher::encrypt "${self.shared_key}" \
+            | utils::b64encode \
+            | utils::readline >&1
+    }
+
+    function channel::is_task_working {
+        kill -0 ${self.task_id:-1} 2>/dev/null
+    }
+}

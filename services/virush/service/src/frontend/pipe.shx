@@ -1,0 +1,24 @@
+#!/usr/bin/shx
+
+class frontend/pipe {
+    @require logging
+
+    function pipe::open {
+        local fd
+        @arguments! fd
+
+        eval "exec ${fd}<> <(:)"
+
+        logging::debug "opened pipe ${fd}"
+    }
+
+    function pipe::close {
+        local fd
+        @arguments! fd
+
+        eval "exec ${fd}>&-"
+        eval "exec ${fd}<&-"
+
+        logging::debug "closed pipe ${fd}"
+    }
+}

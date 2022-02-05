@@ -7,12 +7,12 @@ import channel
 
 
 class ProtocolException(Exception):
-    def __init__(self, message: str):
+    MAX_RESPONSE_LENGTH = 1024
+
+    def __init__(self, message: str, response: str = ''):
         super().__init__()
         self.message = message
-
-    def __str__(self) -> str:
-        return f'protocol error: {self.message}'
+        self.response = response[:self.MAX_RESPONSE_LENGTH]
 
 
 class PingResponse(enum.Enum):
@@ -63,7 +63,7 @@ class VirushProtocol:
         if response == f'SUCCESS: PONG':
             return PingResponse.SUCCESS
 
-        raise ProtocolException('wrong response for ping')
+        raise ProtocolException('wrong response for ping', response)
 
     async def register(self, username: str, password: str) -> RegisterResponse:
         await self.channel.sendline(f'REGISTER')
@@ -76,7 +76,7 @@ class VirushProtocol:
         elif response == f'SUCCESS: USER {username} HAS BEEN REGISTERED':
             return RegisterResponse.SUCCESS
 
-        raise ProtocolException('wrong response for register')
+        raise ProtocolException('wrong response for register', response)
 
     async def login(self, username: str, password: str) -> LoginResponse:
         await self.channel.sendline(f'LOGIN')
@@ -91,7 +91,7 @@ class VirushProtocol:
         elif response == f'SUCCESS: LOGGED IN AS {username}':
             return LoginResponse.SUCCESS
 
-        raise ProtocolException('wrong response for login')
+        raise ProtocolException('wrong response for login', response)
 
     async def logout(self) -> LogoutResponse:
         await self.channel.sendline(f'LOGOUT')
@@ -101,7 +101,7 @@ class VirushProtocol:
         if response == f'SUCCESS: LOGGED OUT':
             return LogoutResponse.SUCCESS
 
-        raise ProtocolException('wrong response for logout')
+        raise ProtocolException('wrong response for logout', response)
 
     async def get(
             self, username: str, property_name: str, encrypted: bool,
@@ -120,7 +120,7 @@ class VirushProtocol:
         elif response == f'SUCCESS: TRYING TO GET {property_name} FROM USER {username}':
             result = GetResponse.SUCCESS
         else:
-            raise ProtocolException('wrong response for get')
+            raise ProtocolException('wrong response for get', response)
 
         return result, (
             await self.channel.recvline()
@@ -147,7 +147,7 @@ class VirushProtocol:
         elif response == f'SUCCESS: TRYING TO PUT {property_name} TO USER {username}':
             result = PutResponse.SUCCESS
         else:
-            raise ProtocolException('wrong response for put')
+            raise ProtocolException('wrong response for put', response)
  
         await self.channel.sendline(data)
 
@@ -161,4 +161,4 @@ class VirushProtocol:
         if response == f'SUCCESS: BYE':
             return ExitResponse.SUCCESS
 
-        raise ProtocolException('wrong response for exit')
+        raise ProtocolException('wrong response for exit', response)

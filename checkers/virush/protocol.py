@@ -106,7 +106,7 @@ class VirushProtocol:
     async def get(
             self, username: str, property_name: str, encrypted: bool,
     ) -> typing.Tuple[GetResponse, str]:
-        mode = 'ENCRYPTED' if encrypted else f''
+        mode = 'ENCRYPTED' if encrypted else ''
 
         await self.channel.sendline(f'GET')
         await self.channel.sendline(f'{username} {property_name} {mode}')
@@ -127,7 +127,7 @@ class VirushProtocol:
     async def put(
             self, username: str, property_name: str, encrypted: bool, data: str = '',
     ) -> PutResponse:
-        mode = 'ENCRYPTED' if encrypted else f''
+        mode = 'ENCRYPTED' if encrypted else ''
 
         await self.channel.sendline(f'PUT')
         await self.channel.sendline(f'{username} {property_name} {mode}')

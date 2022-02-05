@@ -81,12 +81,8 @@ class Checker(BaseChecker):
                 self.cquit(Status.MUMBLE, 'Profile data is incorrect!',
                        'Can\'t find my data in viewed profile')
 
-        qr_data = self.mch.get_qr(Status.MUMBLE)
-        for i in profile:
-            if i not in qr_data.decode():
-                self.cquit(Status.MUMBLE, 'QR-code is incorrect!',
-                       'Can\'t find my data in qr-code')
-    
+        qr_data = self.mch.get_qr(Status.MUMBLE, False)
+
         profile[-1] = get_name()
         self.mch.update_profile(('|'.join(profile)).encode())
         

@@ -73,8 +73,8 @@ class CheckMachine:
     
     def decrypt(self, packet):                
         if len(packet) % 16 != 0:
-            self.c.cquit(Status.MUMBLE, "Protocol error!",
-                "Packet before decrypt size error")
+           self.c.cquit(Status.MUMBLE, "Protocol error!",
+               "Packet before decrypt size error")
 
         decPacket = self.ctx.decrypt(packet)
         decPacket = self.unpad(decPacket)
@@ -88,6 +88,15 @@ class CheckMachine:
 
     def recv(self, size):
         data = self.sock.recv(size)
+
+        if len(data) % 16 != 0:
+            self.sock.settimeout(0.5)
+            try:
+                data += self.sock.recv(size)
+            except:
+                pass
+            self.sock.settimeout(TCP_OPERATIONS_TIMEOUT)
+
         #print("raw-recv: ", data)
         data = self.decrypt(data)
         #print("recv: ", data)
@@ -128,20 +137,33 @@ class CheckMachine:
         self.recv(DEFAULT_RECV_SIZE) # get menu
         return data
 
-    def get_qr(self, status):
+    def get_qr(self, status, proceed_qr=True):
         self.send(b"3")
         data = b''
 
-        for i in range(0, 15):
-            data += self.recv(DEFAULT_RECV_SIZE)
-            if b"> " in data:
+        while True:
+            self.sock.settimeout(0.8)
+            try:
+                tmp = self.sock.recv(16)
+                #print(tmp)
+                if tmp == b'':
+                    break
+
+                data += tmp
+            except:
                 break
         
+        if not proceed_qr:
+            return 0
+
+        data = self.decrypt(data)
         if len(data) == 0:
             self.c.cquit(status, "Can't get QR-code",
                 "data is empty")
 
-        data = data.split(b'\n')[:-5]
+        data = data.split(b'\n')[:-6]
+        #print(data)
+
         pixels = []
 
         for line in data:
@@ -157,9 +179,9 @@ class CheckMachine:
             self.c.cquit(status, "Invalid QR-code format",
                 "Pixels is to small")
 
-        imgSize = (len(data)-1, len(pixels[0])-1)
+        imgSize = (len(data), len(pixels[0]))
 
-        img = Image.new('RGB', imgSize )
+        img = Image.new('RGB', imgSize)
         img_pixels = img.load()
 
         for i in range(0, imgSize[0]):
@@ -169,7 +191,7 @@ class CheckMachine:
         _, qr_path = tempfile.mkstemp(suffix='.png')
 
         img.save(qr_path)
-        
+
         try:
             data = decode(Image.open(qr_path))
             text = data[0].data

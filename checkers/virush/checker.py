@@ -30,27 +30,51 @@ class Verdict:
             self.private = self.public
 
 
+def print_diff(expected: typing.Any, actual: typing.Any) -> str:
+    expected, actual = map(str, (expected, actual))
+    max_length = 2 * len(expected)
+
+    return f'{expected} != {actual[:max_length]}'
+
+
+async def check_protocol_response(
+        coroutine: typing.Coroutine, expected_response: typing.Any, error_message: str,
+) -> None:
+    response = await coroutine
+
+    if isinstance(response, typing.Tuple):
+        response, *_ = response
+
+    if response is not expected_response:
+        raise protocol.ProtocolException(error_message, print_diff(expected_response, response))
+
+
 class Checker:
     vulns: int = 2
     timeout: int = 59
     uses_attack_data: bool = True
 
-    def __init__(self, host: str) -> None:
+    def __init__(self, host: str, openssl: openssl.OpenSSL) -> None:
         self.host = host
         self.port = 17171
         self.uri = f'ws://{self.host}:{self.port}/api/'
+        self.openssl = openssl
 
     @contextlib.asynccontextmanager
-    async def initialize(self):
+    async def create(host: str):
         async with openssl.OpenSSL.create() as ssl:
-            async with channel.WebsocketChannel.create(self.uri, 'checker') as ws:
-                _channel = channel.EncryptedChannel(ws, ssl)
-                await _channel.establish()
+            yield Checker(host, ssl)
 
-                proto = protocol.VirushProtocol(_channel)
-                yield ssl, proto
+    @contextlib.asynccontextmanager
+    async def connection(self, user_agent: str = 'checker'):
+        async with channel.WebsocketChannel.create(self.uri, user_agent) as ws:
+            _channel = channel.EncryptedChannel(ws, self.openssl)
+            await _channel.establish()
 
-                await proto.exit()
+            proto = protocol.VirushProtocol(_channel)
+            yield proto
+
+            await proto.exit()
 
     async def action(self, action: str, *args, **kwargs) -> Verdict:
         try:
@@ -64,7 +88,9 @@ class Checker:
                 return await self.get(*args, **kwargs)
             else:
                 return Verdict(checklib.Status.ERROR, 'checker failed', f'invalid action: {action}')
-        except (protocol.ProtocolException, channel.ChannelException) as error:
+        except protocol.ProtocolException as error:
+            return Verdict(checklib.Status.MUMBLE, error.message, error.response)
+        except channel.ChannelException as error:
             return Verdict(checklib.Status.MUMBLE, str(error))
         except websockets.exceptions.ConnectionClosed as error:
             return Verdict(checklib.Status.MUMBLE, 'connection has been closed unexpectedly', str(error))
@@ -87,10 +113,61 @@ class Checker:
         return Verdict(checklib.Status.OK, json.dumps(data))
 
     async def check(self) -> Verdict:
-        # TODO: add more checks for all handlers
+        username1 = generators.rnd_username(10)
+        password1 = generators.rnd_password(70)
 
-        async with self.initialize() as _:
-            pass
+        username2 = generators.rnd_username(10)
+        password2 = generators.rnd_password(70)
+
+        property_name1 = generators.rnd_string(50)
+        property_name2 = generators.rnd_string(50)
+
+        value1 = generators.rnd_string(20)
+        value2 = generators.rnd_string(20)
+
+        async with self.connection() as proto:
+            await check_protocol_response(
+                proto.ping(), protocol.PingResponse.SUCCESS, 'failed to ping',
+            )
+            await check_protocol_response(
+                proto.login(username1, password1), protocol.LoginResponse.DOES_NOT_EXIST, 'incorrect login behaviour',
+            )
+            await check_protocol_response(
+                proto.register(username1, password1), protocol.RegisterResponse.SUCCESS, 'failed to register',
+            )
+            await check_protocol_response(
+                proto.register(username1, password1), protocol.RegisterResponse.ALREADY_REGISTERED, 'incorrect register behaviour',
+            )
+            await check_protocol_response(
+                proto.login(username1, password2), protocol.LoginResponse.INVALID_PASSWORD, 'incorrect login behaviour',
+            )
+            await check_protocol_response(
+                proto.login(username1, password1), protocol.LoginResponse.SUCCESS, 'failed to login',
+            )
+            await check_protocol_response(
+                proto.put(username2, property_name1, True, value1), protocol.PutResponse.WRONG_USER, 'incorrect put behaviour',
+            )
+            await check_protocol_response(
+                proto.put(username1, property_name1, True, value1), protocol.PutResponse.SUCCESS, 'failed to put',
+            )
+            await check_protocol_response(
+                proto.put(username1, property_name1, True, value2), protocol.PutResponse.PROPERTY_ALREADY_EXISTS, 'incorrect put behaviour',
+            )
+            await check_protocol_response(
+                proto.get(username2, property_name1, False), protocol.GetResponse.USER_DOES_NOT_EXIST, 'incorrect get behaviour',
+            )
+            await check_protocol_response(
+                proto.get(username1, property_name2, True), protocol.GetResponse.PROPERTY_DOES_NOT_EXIST, 'incorrect get behaviour',
+            )
+            await check_protocol_response(
+                proto.get(username1, property_name1, True), protocol.GetResponse.SUCCESS, 'failed to get',
+            )
+            await check_protocol_response(
+                proto.logout(), protocol.LogoutResponse.SUCCESS, 'failed to logout',
+            )
+            await check_protocol_response(
+                proto.get(username1, property_name1, False), protocol.GetResponse.SUCCESS, 'failed to get',
+            )
 
         return Verdict(checklib.Status.OK)
 
@@ -98,7 +175,7 @@ class Checker:
         username = generators.rnd_username(10)
         password = generators.rnd_password(70)
 
-        async with self.initialize() as (_, proto):
+        async with self.connection() as proto:
             response = await proto.register(username, password)
             if response is not protocol.RegisterResponse.SUCCESS:
                 return Verdict(checklib.Status.MUMBLE, 'failed to register', response)
@@ -139,9 +216,7 @@ class Checker:
         })
 
         checker_data = json.dumps({
-            'username': username,
-            'password': password,
-            'property_name': property_name,
+            'username': username, 'password': password,
         })
 
         return Verdict(checklib.Status.OK, attack_data, checker_data)
@@ -165,37 +240,48 @@ class Checker:
         })
 
         checker_data = json.dumps({
-            'username': username,
-            'password': password,
-            'property_name': property_name,
+            'username': username, 'property_name': property_name,
         })
 
         return Verdict(checklib.Status.OK, attack_data, checker_data)
 
     async def get(self, flag_id: str, flag: str, vuln: str) -> Verdict:
-        checker_data = json.loads(flag_id)
-        username, password, property_name = map(
-            checker_data.get, ['username', 'password', 'property_name'],
-        )
+        checker_data: typing.Dict[str, typing.Any] = json.loads(flag_id)
 
-        async with self.initialize() as (_, proto):
+        async with self.connection() as proto:
             if vuln == '1':
-                verdict = await self.get_1(proto, flag, username, password)
+                return await self.get_1(proto, flag, **checker_data)
             elif vuln == '2':
-                verdict = await self.get_2(proto, flag, username, property_name)
+                return await self.get_2(proto, flag, **checker_data)
             else:
                 raise Exception(f'invalid vuln {vuln} in get')
-
-            return verdict
 
     async def get_1(
             self,
             proto: protocol.VirushProtocol,
             flag: str,
             username: str,
-            password: str,
+            password: str
     ) -> Verdict:
         property_name = 'flag'  # constant
+
+        response, encrypted_flag = await proto.get(username, property_name, False)
+        if response is not protocol.GetResponse.SUCCESS:
+            return Verdict(checklib.Status.CORRUPT, 'failed to get', response)
+
+        try:
+            ciphertext = bytes.fromhex(encrypted_flag)
+        except Exception:
+            return Verdict(checklib.Status.MUMBLE, 'incorrect storage encoding')
+
+        plaintext = await self.openssl.decrypt(ciphertext, password)
+        if len(plaintext) == 0:
+            return Verdict(checklib.Status.MUMBLE, 'incorrect storage encryption')
+
+        if plaintext.strip(b'\n') != flag.encode():
+            return Verdict(
+                checklib.Status.CORRUPT, 'invalid flag', print_diff(flag, plaintext),
+            )
 
         response = await proto.login(username, password)
         if response is not protocol.LoginResponse.SUCCESS:
@@ -211,7 +297,7 @@ class Checker:
 
         if property != flag:
             return Verdict(
-                checklib.Status.CORRUPT, 'invalid flag', f'{repr(property)} != {repr(flag)}',
+                checklib.Status.CORRUPT, 'invalid flag', print_diff(flag, property),
             )
 
         return Verdict(checklib.Status.OK)
@@ -229,7 +315,7 @@ class Checker:
 
         if property != flag:
             return Verdict(
-                checklib.Status.CORRUPT, 'invalid flag', f'{repr(property)} != {repr(flag)}',
+                checklib.Status.CORRUPT, 'invalid flag', print_diff(flag, property),
             )
 
         return Verdict(checklib.Status.OK)
@@ -238,8 +324,8 @@ class Checker:
 async def main():
     action, host, *arguments = sys.argv[1:]
 
-    checker = Checker(host)
-    verdict = await checker.action(action, *arguments)
+    async with Checker.create(host) as checker:
+        verdict = await checker.action(action, *arguments)
 
     print(verdict.public, file=sys.stdout)
     print(verdict.private, file=sys.stderr)

@@ -25,6 +25,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - name: Install zbar shared lib
+        run: sudo apt-get install -y libzbar0
+
       - name: Install cmake and protobuf
         run: sudo apt-get install -y cmake protobuf-compiler
 
@@ -51,6 +54,7 @@ jobs:
           - sputnik_v8
           - 5Go
           - modelrna
+          - kuar
 
     steps:
       - uses: actions/checkout@v2
@@ -65,6 +69,9 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}-${{ hashFiles('checkers/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
+
+      - name: Install zbar shared lib
+        run: sudo apt-get install -y libzbar0
 
       - name: Install cmake and protobuf
         run: sudo apt-get install -y cmake protobuf-compiler
@@ -141,6 +148,9 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}-${{ hashFiles('checkers/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
+
+      - name: Install zbar shared lib
+        run: sudo apt-get install -y libzbar0
 
       - name: Install cmake and protobuf
         run: sudo apt-get install -y cmake protobuf-compiler

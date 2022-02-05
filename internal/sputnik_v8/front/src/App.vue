@@ -73,7 +73,7 @@ export default {
     example() {
       this.context = null;
       this.report = null;
-      this.opcodes = [["OP_PUSH", "Hello, World!"], ["OP_REPORT"]];
+      this.opcodes = [["OP_PUSH", "HelloWorld"], ["OP_REPORT"]];
     },
 
     async execute() {

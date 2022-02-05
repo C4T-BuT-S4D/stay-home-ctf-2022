@@ -1,3 +1,5 @@
+asyncio
+websockets
 checklib
 onnx==1.8.1
 catboost==1.0.0

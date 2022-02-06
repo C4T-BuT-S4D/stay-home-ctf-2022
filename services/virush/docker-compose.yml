@@ -21,7 +21,6 @@ services:
     stop_grace_period: 3s
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./static:/var/www:ro
     ports:
       - "17171:80"
     depends_on:

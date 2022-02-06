@@ -42,7 +42,7 @@ Coming...
 
 ## Donation
 
-We organize our CTFs and trainings on a regular basis. Though our infrastructure is cost-optimized, it is not 0. So we are open for donations if you want to support us. Vulnbox costs ~3$ per team.
+We organize our CTFs and trainings on a regular basis. Though our infrastructure is cost-optimized, it is not 0. So we are open for donations if you want to support us. Vulnbox costs ~5$ per team.
 
 Paypal: https://www.paypal.me/pomomondreganto
 

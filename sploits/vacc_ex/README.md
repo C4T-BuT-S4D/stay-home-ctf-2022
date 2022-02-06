@@ -19,8 +19,8 @@ Other users can also buy the vaccine using the private/public ID.
 2. Users can buy the vaccine using the stored balance.
 3. The validation functions do not check the 'special' float values like 'inf' or 'nan'. 
 3. If you create the vaccine with NaN price it will pass all the check since the any comparisons with "NaN" value return False. 
-4. The 'NaN' price will be subtracted from the user balance and also become 'NaN'.
-5. You will be able to buy any product since (Nan < AnyValue) will return false.
+4. The 'NaN' price will be subtracted from the user balance and user balance will also become 'NaN'.
+5. You will be able to buy any product since (Nan < AnyValue) will return false and you will be able to buy any stock.
 
 Exploit: [nan_price.py](nan_price.py)
 

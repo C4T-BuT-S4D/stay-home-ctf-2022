@@ -1,0 +1,45 @@
+#!/usr/bin/shx
+
+class crypto/cipher {
+    @require crypto/utils
+
+    declare -rg \
+        CipherAlgorithm="aes-128-cbc" \
+        CipherBlockSize=16 \
+        CipherRandomSource="/dev/urandom"
+
+    function cipher::encrypt {
+        local key
+        @arguments! key
+
+        local iv
+        dd if=${CipherRandomSource} bs=${CipherBlockSize} count=1 status=none \
+            | utils::hexencode \
+            | read iv
+
+        if (( ${#iv} != CipherBlockSize * 2 )); then
+            logging::warning "failed to generate IV"
+            return 1
+        fi
+
+        echo ${iv} | utils::hexdecode
+        openssl ${CipherAlgorithm} -e -iter 16 -k ${key} -iv ${iv} 2>/dev/null
+    }
+
+    function cipher::decrypt {
+        local key
+        @arguments! key
+
+        local iv
+        dd bs=${CipherBlockSize} count=1 status=none \
+            | utils::hexencode \
+            | read iv
+
+        if (( ${#iv} != CipherBlockSize * 2 )); then
+            logging::warning "failed to read IV"
+            return 1
+        fi
+
+        openssl ${CipherAlgorithm} -d -iter 16 -k ${key} -iv ${iv} 2>/dev/null
+    }
+}

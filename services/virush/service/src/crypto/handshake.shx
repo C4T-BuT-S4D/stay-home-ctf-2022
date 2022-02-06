@@ -1,0 +1,58 @@
+#!/usr/bin/shx
+
+class crypto/handshake {
+    @require logging
+    @require crypto/utils
+    @require crypto/cipher
+
+    declare -rg \
+        HandshakeKeyfileMask="XXXXXXXXXXXXXXXX.key" \
+        HandshakeDhParamFile="crypto/dhparam.pem"
+
+    if [[ ! -r "${HandshakeDhParamFile}" ]]; then
+        @throw "dh.param file ${HandshakeDhParamFile} does not exist"
+    fi
+
+    function handshake::__init__ {
+        local keys_directory
+        @arguments! keys_directory
+
+        if [[ ! -d "${keys_directory}" ]]; then
+            @throw "keys directory ${keys_directory} does not exist"
+        fi
+
+        mktemp -p ${keys_directory} ${HandshakeKeyfileMask} \
+            | read self.key_path
+
+        openssl genpkey -paramfile ${HandshakeDhParamFile} -out ${self.key_path} 2>/dev/null \
+            || @throw "failed to generate private key"
+
+        logging::debug "successfully generated private key"
+    }
+
+    function handshake::__destroy__ {
+        rm -f ${self.key_path}
+
+        logging::debug "successfully deleted private key"
+    }
+
+    function handshake::get_public_key {
+        openssl pkey -in ${self.key_path} -pubout -outform DER 2>/dev/null \
+            || @throw "failed to get public key"
+
+        logging::debug "successfully generated public key"
+    }
+
+    function handshake::derive_shared_key {
+        local shared_key
+
+        openssl pkeyutl -derive -inkey ${self.key_path} -peerkey - -peerform DER 2>/dev/null \
+            | utils::sha256sum \
+            | read shared_key \
+            || @throw "failed to generate shared key"
+
+        logging::debug "successfully generated shared key"
+
+        echo ${shared_key}
+    }
+}

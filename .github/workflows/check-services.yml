@@ -31,6 +31,9 @@ jobs:
       - name: Install cmake and protobuf
         run: sudo apt-get install -y cmake protobuf-compiler
 
+      - name: Install openssl
+        run: sudo apt-get install -y openssl
+
       - name: install requirements
         run: pip install -r requirements.txt
 
@@ -56,6 +59,7 @@ jobs:
           - modelrna
           - vacc_ex
           - kuar
+          - virush
 
     steps:
       - uses: actions/checkout@v2
@@ -76,6 +80,9 @@ jobs:
 
       - name: Install cmake and protobuf
         run: sudo apt-get install -y cmake protobuf-compiler
+
+      - name: Install openssl
+        run: sudo apt-get install -y openssl
 
       - name: install requirements
         run: pip install -r requirements.txt
@@ -155,6 +162,9 @@ jobs:
 
       - name: Install cmake and protobuf
         run: sudo apt-get install -y cmake protobuf-compiler
+
+      - name: Install openssl
+        run: sudo apt-get install -y openssl
 
       - name: install requirements
         run: pip install -r requirements.txt

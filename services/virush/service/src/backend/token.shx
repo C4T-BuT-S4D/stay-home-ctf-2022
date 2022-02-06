@@ -1,0 +1,29 @@
+#!/usr/bin/shx
+
+class backend/token {
+    @require logging
+
+    declare -Arg \
+        TokenState=(
+            ["INACTIVE"]=0
+            ["ACTIVE"]=1
+        )
+
+    function token::__init__ {
+        self.is_active=${TokenState[INACTIVE]}
+    }
+
+    function token::activate {
+        self.is_active=${TokenState[ACTIVE]}
+        logging::debug "token is activated"
+    }
+
+    function token::deactivate {
+        self.is_active=${TokenState[INACTIVE]}
+        logging::debug "token is deactivated"
+    }
+
+    function token::is_active {
+        [[ "${self.is_active:-}" == "${TokenState[ACTIVE]}" ]]
+    }
+}

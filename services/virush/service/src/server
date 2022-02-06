@@ -1,0 +1,47 @@
+#!/usr/bin/shx
+
+class server {
+    @require logging
+    @require backend/app
+    @require backend/storage
+    @require frontend/channel
+
+    declare -rg \
+        ServerKeysDirectory="/tmp/keys_directory" \
+        ServerStorageDirectory="/tmp/storage_directory"
+
+    function server::main {
+        logging::set_level "INFO"
+
+        if [[ ! -d "${ServerKeysDirectory}" ]]; then
+            @throw "keys directory does not exist"
+        fi
+
+        if [[ ! -d "${ServerStorageDirectory}" ]]; then
+            @throw "storage directory does not exist"
+        fi
+
+        logging::info "starting server"
+
+        local channel
+        channel::new "${ServerKeysDirectory}" : channel
+
+        ${channel}::establish
+
+        local storage
+        storage::new "${ServerStorageDirectory}" : storage
+
+        local app
+        app::new ${storage} : app
+
+        ${channel}::run ${app}::run
+
+        ${app}::delete
+        ${storage}::delete
+        ${channel}::delete
+
+        logging::info "server has stopped"
+    }
+}
+
+@entrypoint server::main

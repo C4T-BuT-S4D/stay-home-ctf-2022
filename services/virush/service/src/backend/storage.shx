@@ -88,7 +88,8 @@ class backend/storage {
 
         local attribute_path=${self.directory}/${entity_name}/${attribute_name}
 
-        dd bs=${StorageDataLength} count=1 if=${attribute_path} status=none 2>/dev/null
+        dd bs=${StorageDataLength} count=1 if=${attribute_path} status=none 2>/dev/null \
+            || logging::debug "failed to read attribute"
     }
 
     function storage::write_attribute {
@@ -102,6 +103,7 @@ class backend/storage {
 
         local attribute_path=${self.directory}/${entity_name}/${attribute_name}
 
-        dd bs=${StorageDataLength} count=1 of=${attribute_path} status=none 2>/dev/null
+        dd bs=${StorageDataLength} count=1 of=${attribute_path} status=none 2>/dev/null \
+            || logging::debug "failed to write attribute"
     }
 }

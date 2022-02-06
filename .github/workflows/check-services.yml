@@ -54,11 +54,11 @@ jobs:
     strategy:
       matrix:
         service:
-          # - sputnik_v8
-          # - 5Go
-          # - modelrna
-          # - vacc_ex
-          # - kuar
+          - sputnik_v8
+          - 5Go
+          - modelrna
+          - vacc_ex
+          - kuar
           - virush
 
     steps:

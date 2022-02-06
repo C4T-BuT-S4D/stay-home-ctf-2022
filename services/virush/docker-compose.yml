@@ -26,8 +26,20 @@ services:
       - "17171:80"
     depends_on:
       - virush
+      - cleaner
 
-  # TODO: add cleaner
+  cleaner:
+    build: cleaner
+    cpus: 1
+    pids_limit: 128
+    mem_limit: 128M
+    restart: unless-stopped
+    stop_grace_period: 3s
+    volumes:
+      - "keys:/tmp/keys_directory"
+      - "storage:/tmp/storage_directory"
+    depends_on:
+      - virush
 
 volumes:
   keys:

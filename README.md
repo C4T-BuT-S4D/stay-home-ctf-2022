@@ -1,4 +1,4 @@
-[![check-services](https://github.com/C4T-BuT-S4D/stay-home-ctf-2021/actions/workflows/check-services.yml/badge.svg?branch=master&event=push)](https://github.com/C4T-BuT-S4D/stay-home-ctf-2021/actions/workflows/check-services.yml)
+[![check-services](https://github.com/C4T-BuT-S4D/stay-home-ctf-2022/actions/workflows/check-services.yml/badge.svg?branch=master&event=push)](https://github.com/C4T-BuT-S4D/stay-home-ctf-2022/actions/workflows/check-services.yml)
 
 # Stay ~/ CTF 2022
 

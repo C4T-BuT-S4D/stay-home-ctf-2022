@@ -23,7 +23,7 @@ Explanation:
 
 Exploitation:
 
-To do the exploitation you will need to create ML model that will read the contents of the /app/config.env file which have a JWT secret key.
+To do the exploitation you will need to create ML model that will read the contents of the /app/config.env file which has a JWT secret key used to sign user-requests.
 
 You should build the model that will not fail with the data provided from service (5 values).
 
@@ -32,8 +32,9 @@ Steps:
 This will help us to leak 40 bytes of the file (you also can set "offset" field to leak any part of the file).
 2. Sum this tensor with the user-provided tensor/input.
 3. Output the result (pls note there is no checks on output tensor size, the output should have 1 or 2 output tensors, but there is no restrictions on the size of these tensors).
-4. Call the model using service (test the vaccine) with all zeros data.
+4. Call the model using service (test the vaccine) with all zeros data to leak the config file.
 5. Convert int bytes to string and find the JWT key.
+6. Use the JWT key to sign requests and login as any user.
 
 Exploit: [lfd_secret_key_leak.py](lfd_secret_key_leak.py)
 
